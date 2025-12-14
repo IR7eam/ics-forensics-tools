@@ -20,3 +20,23 @@ class BaselineProfileRead(BaselineProfileBase):
 
     class Config:
         orm_mode = True
+
+
+class BaselineTrainRequest(BaseModel):
+    asset_id: int
+    protocol: str
+    observations_limit: int = 200
+
+
+class BaselineEvaluateRequest(BaseModel):
+    asset_id: int
+    protocol: str
+    metrics: dict = Field(default_factory=dict)
+    threshold: float = 3.0
+    create_event: bool = True
+
+
+class BaselineEvaluateResult(BaseModel):
+    comparison: dict
+    deviations: list[str]
+    event_id: Optional[int] = None

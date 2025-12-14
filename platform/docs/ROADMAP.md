@@ -35,6 +35,9 @@ requirements and highlights what is already implemented versus what remains.
 - **Queued scans and cancellation**: Scan triggers now enqueue work onto an
   in-process worker so multiple jobs can queue safely, and analysts can request
   cancellation with per-target audit logs and status updates.
+- **Baseline training & deviations**: Analysts can train per-asset baselines
+  from existing observations and evaluate new metric snapshots against those
+  baselines, automatically emitting security events for significant drift.
 - **Progress tracking**: This roadmap documents gaps vs. the full requirement set
   and proposes the next milestone targets below.
 

@@ -1,5 +1,11 @@
 from app.schemas.assets import AssetCreate, AssetRead, AssetUpdate
-from app.schemas.baselines import BaselineProfileCreate, BaselineProfileRead
+from app.schemas.baselines import (
+    BaselineEvaluateRequest,
+    BaselineEvaluateResult,
+    BaselineProfileCreate,
+    BaselineProfileRead,
+    BaselineTrainRequest,
+)
 from app.schemas.audit import AuditLogCreate, AuditLogRead
 from app.schemas.evidence import RawEvidenceCreate, RawEvidenceRead
 from app.schemas.evidence_links import EvidenceLinkCreate, EvidenceLinkRead
@@ -28,6 +34,9 @@ __all__ = [
     "SecurityEventRead",
     "BaselineProfileCreate",
     "BaselineProfileRead",
+    "BaselineTrainRequest",
+    "BaselineEvaluateRequest",
+    "BaselineEvaluateResult",
     "ReportCreate",
     "ReportRead",
     "PluginSpecRead",
