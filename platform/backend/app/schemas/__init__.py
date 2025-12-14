@@ -13,6 +13,7 @@ from app.schemas.observations import ObservationCreate, ObservationRead
 from app.schemas.reports import ReportCreate, ReportRead
 from app.schemas.scan_jobs import ScanJobCreate, ScanJobRead, ScanJobUpdate
 from app.schemas.security_events import SecurityEventCreate, SecurityEventRead
+from app.schemas.rules import RulePackCreate, RulePackRead, RulePackUpdate
 from app.schemas.plugins import PluginSpecRead
 
 __all__ = [
@@ -40,4 +41,7 @@ __all__ = [
     "ReportCreate",
     "ReportRead",
     "PluginSpecRead",
+    "RulePackCreate",
+    "RulePackRead",
+    "RulePackUpdate",
 ]

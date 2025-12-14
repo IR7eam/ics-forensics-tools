@@ -16,7 +16,7 @@ from app.schemas.baselines import (
 from app.services.audit import record_audit
 from app.services.anomaly import detect_anomalies
 from app.services.baseline import evaluate_metrics_against_baseline, train_baseline_profile
-from app.services.rules import RuleEngine, load_rules_from_file
+from app.services.rules import RuleEngine, load_rules_from_file, load_rules_from_db
 from app.services.risk import summarize_attack_stages
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -26,20 +26,27 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 def evaluate_rules(
     payload: Dict,
     rule_file: str = "rules/sample_rules.yml",
+    rule_pack_id: int | None = None,
     session: Session = Depends(get_session),
     current_user=Depends(require_role(Role.analyst)),
 ):
-    path = Path(rule_file)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Rule file not found")
-    rules = load_rules_from_file(path)
+    if rule_pack_id is not None:
+        try:
+            rules = load_rules_from_db(session, rule_pack_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    else:
+        path = Path(rule_file)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Rule file not found")
+        rules = load_rules_from_file(path)
     engine = RuleEngine(rules)
     matches = engine.evaluate(payload)
     record_audit(
         session,
         actor=current_user.username,
         action="rules_evaluate",
-        resource=path.name,
+        resource=str(rule_pack_id or Path(rule_file).name),
         detail={"match_count": len(matches)},
     )
     return {"matches": matches}

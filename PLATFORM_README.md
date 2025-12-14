@@ -63,6 +63,7 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Safety enforcement**: Scan jobs now enforce operation allowlists and require explicit opt-in for side-effecting protocol actions, recording denied attempts in the audit log.
 - **Plugin registry API + UI surfacing**: `/api/plugins` lists per-protocol allowed/dangerous operations, device types, and descriptions so the frontend can highlight read-only defaults and red-flag opt-in steps in the Settings page.
 - **Baseline UX and attack-stage awareness**: Settings now offers baseline train/evaluate controls, and the dashboard visualizes attack-stage coverage using `/analysis/attack-stages` so analysts can track drift and stage trends.
+- **Rule-pack management**: Analysts can upload/list/toggle rule packs via `/api/rules` with audit coverage and test them in the Settings UI to validate detection logic.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.
@@ -78,7 +79,8 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `POST /api/auth/token` — obtain a JWT.
 - CRUD under `/api/assets`, `/api/scan-jobs`, `/api/observations`, `/api/evidence`, `/api/events`, `/api/baselines`, `/api/evidence-links`.
 - `POST /api/reports/generate` — generate HTML/PDF/DOCX reports summarizing assets/events/observations within a scope.
-- `POST /api/analysis/rules/evaluate` — evaluate YAML rules against an observation-like payload.
+- `POST /api/analysis/rules/evaluate` — evaluate YAML rules or stored rule packs (via `rule_pack_id`) against an observation-like payload.
+- CRUD under `/api/rules` — upload/list/toggle/test rule packs.
 - `POST /api/analysis/anomaly` — run z-score and IsolationForest anomaly detection over metric arrays.
 - `POST /api/analysis/baseline/train` — compute and store per-asset/per-protocol baselines from stored observations.
 - `POST /api/analysis/baseline/evaluate` — compare live metrics to a baseline, optionally emitting `SecurityEvent` rows.

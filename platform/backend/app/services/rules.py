@@ -1,9 +1,12 @@
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 
 from app.services.risk import compute_risk_score
+from app.models.core import RulePack
+from sqlmodel import Session, select
 
 
 class RuleEngine:
@@ -74,3 +77,39 @@ class RuleEngine:
 def load_rules_from_file(path: Path) -> List[dict]:
     content = yaml.safe_load(path.read_text())
     return content.get("rules", []) if isinstance(content, dict) else []
+
+
+def load_rules_from_db(session: Session, rule_pack_id: int) -> List[dict]:
+    pack = session.get(RulePack, rule_pack_id)
+    if not pack:
+        raise ValueError("Rule pack not found")
+    return pack.rules or []
+
+
+def list_rule_packs(session: Session, enabled: Optional[bool] = None) -> List[RulePack]:
+    query = select(RulePack)
+    if enabled is not None:
+        query = query.where(RulePack.enabled == enabled)
+    return session.exec(query).all()
+
+
+def create_rule_pack(session: Session, data: Dict[str, Any]) -> RulePack:
+    pack = RulePack(**data)
+    session.add(pack)
+    session.commit()
+    session.refresh(pack)
+    return pack
+
+
+def update_rule_pack(session: Session, pack_id: int, data: Dict[str, Any]) -> RulePack:
+    pack = session.get(RulePack, pack_id)
+    if not pack:
+        raise ValueError("Rule pack not found")
+    for key, value in data.items():
+        if value is not None:
+            setattr(pack, key, value)
+    pack.updated_at = datetime.utcnow()
+    session.add(pack)
+    session.commit()
+    session.refresh(pack)
+    return pack

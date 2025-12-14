@@ -102,3 +102,14 @@ class AuditLog(SQLModel, table=True):
     status: str = "success"
     detail: dict = Field(default_factory=dict, sa_column=Column(SAJSON))
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RulePack(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    description: Optional[str] = None
+    enabled: bool = True
+    tags: List[str] = Field(default_factory=list, sa_column=Column(SAJSON))
+    rules: List[dict] = Field(default_factory=list, sa_column=Column(SAJSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

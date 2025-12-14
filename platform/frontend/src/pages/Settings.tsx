@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, Space, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Form, Input, InputNumber, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { apiClient, setAuthToken } from '../api/client';
 
 interface PluginSpec {
@@ -19,6 +19,16 @@ interface BaselineProfile {
   trained_at?: string;
 }
 
+interface RulePack {
+  id: number;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  tags?: string[];
+  rules: any[];
+  created_at?: string;
+}
+
 export function SettingsPage() {
   const [form] = Form.useForm();
   const savedToken = localStorage.getItem('ics-token') || '';
@@ -27,6 +37,8 @@ export function SettingsPage() {
   const [baselines, setBaselines] = useState<BaselineProfile[]>([]);
   const [baselineForm] = Form.useForm();
   const [evaluateForm] = Form.useForm();
+  const [rulePacks, setRulePacks] = useState<RulePack[]>([]);
+  const [ruleForm] = Form.useForm();
 
   useEffect(() => {
     apiClient
@@ -38,6 +50,11 @@ export function SettingsPage() {
       .get<BaselineProfile[]>('/baselines/')
       .then((res) => setBaselines(res.data))
       .catch(() => message.warning('Could not fetch baselines')); // not fatal
+
+    apiClient
+      .get<RulePack[]>('/rules/')
+      .then((res) => setRulePacks(res.data))
+      .catch(() => message.warning('Could not fetch rules'));
   }, []);
 
   const handleSave = () => {
@@ -81,6 +98,32 @@ export function SettingsPage() {
       }
     } catch (err: any) {
       const detail = err?.response?.data?.detail || 'Baseline evaluation failed';
+      message.error(detail);
+    }
+  };
+
+  const handleCreateRulePack = async () => {
+    try {
+      const values = await ruleForm.validateFields();
+      const tags = values.tags ? values.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+      const rules = JSON.parse(values.rulesJson || '[]');
+      const payload = { name: values.name, description: values.description, enabled: true, tags, rules };
+      const res = await apiClient.post('/rules/', payload);
+      message.success('Rule pack created');
+      setRulePacks((prev) => [res.data as RulePack, ...prev]);
+      ruleForm.resetFields();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || 'Failed to create rule pack';
+      message.error(detail);
+    }
+  };
+
+  const toggleRulePack = async (pack: RulePack) => {
+    try {
+      const res = await apiClient.patch(`/rules/${pack.id}`, { enabled: !pack.enabled });
+      setRulePacks((prev) => prev.map((p) => (p.id === pack.id ? res.data : p)));
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || 'Failed to update rule pack';
       message.error(detail);
     }
   };
@@ -168,6 +211,83 @@ export function SettingsPage() {
               <Typography.Text code>{JSON.stringify(metrics)}</Typography.Text>
             )
           }
+        ]}
+      />
+
+      <Typography.Title level={5} style={{ marginTop: 24 }}>
+        Rule packs (upload/test rules)
+      </Typography.Title>
+      <Form
+        form={ruleForm}
+        layout="vertical"
+        initialValues={{
+          name: 'Detect Modbus writes',
+          description: 'Blocks write attempts by default',
+          rulesJson: JSON.stringify(
+            [
+              {
+                id: 'modbus-write',
+                name: 'Modbus write detected',
+                conditions: [
+                  { field: 'protocol', op: 'eq', value: 'modbus' },
+                  { field: 'parsed_data.function_code', op: 'gt', value: 4 },
+                ],
+                severity: 'high',
+              },
+            ],
+            null,
+            2,
+          ),
+        }}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Form.Item name="name" label="Name" rules={[{ required: true }]}> 
+            <Input placeholder="Rule pack name" />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <Input placeholder="What this rule pack detects" />
+          </Form.Item>
+          <Form.Item name="tags" label="Tags (comma separated)">
+            <Input placeholder="modbus, safety" />
+          </Form.Item>
+          <Form.Item
+            name="rulesJson"
+            label="Rules JSON"
+            rules={[{ required: true, message: 'Provide an array of rule objects' }]}
+          >
+            <Input.TextArea rows={6} />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" onClick={handleCreateRulePack}>Upload rule pack</Button>
+          </Form.Item>
+        </Space>
+      </Form>
+
+      <Table
+        rowKey={(row) => String(row.id)}
+        dataSource={rulePacks}
+        pagination={{ pageSize: 5 }}
+        columns={[
+          { title: 'ID', dataIndex: 'id', width: 80 },
+          { title: 'Name', dataIndex: 'name' },
+          { title: 'Description', dataIndex: 'description' },
+          {
+            title: 'Enabled',
+            dataIndex: 'enabled',
+            render: (_: any, row: RulePack) => (
+              <Switch checked={row.enabled} onChange={() => toggleRulePack(row)} />
+            ),
+          },
+          {
+            title: 'Tags',
+            dataIndex: 'tags',
+            render: (tags?: string[]) => tags?.map((t) => <Tag key={t}>{t}</Tag>),
+          },
+          {
+            title: 'Rules',
+            dataIndex: 'rules',
+            render: (rules: any[]) => <Typography.Text code>{rules?.length || 0} rules</Typography.Text>,
+          },
         ]}
       />
 

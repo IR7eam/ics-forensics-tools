@@ -15,6 +15,7 @@ from app.api import (
     reports,
     audit,
     plugins,
+    rules,
 )
 from pathlib import Path
 
@@ -48,6 +49,7 @@ app.include_router(analysis.router, prefix=settings.api_prefix)
 app.include_router(reports.router, prefix=settings.api_prefix)
 app.include_router(audit.router, prefix=settings.api_prefix)
 app.include_router(plugins.router, prefix=settings.api_prefix)
+app.include_router(rules.router, prefix=settings.api_prefix)
 
 
 @app.get("/")
