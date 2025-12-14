@@ -8,7 +8,7 @@ from app.db.session import get_session
 from app.models.core import ScanJob
 from app.schemas.scan_jobs import ScanJobCreate, ScanJobRead, ScanJobUpdate
 from app.services.audit import record_audit
-from app.services.scanner import run_scan_job
+from app.services.scanner import cancel_scan_job, enqueue_scan_job
 
 router = APIRouter(prefix="/scan-jobs", tags=["scan-jobs"])
 
@@ -73,7 +73,7 @@ def trigger_job(
     if not db_job:
         raise HTTPException(status_code=404, detail="ScanJob not found")
     actor = getattr(current_user, "username", "system")
-    background_tasks.add_task(run_scan_job, job_id, actor)
+    background_tasks.add_task(enqueue_scan_job, job_id, actor)
     db_job.status = "queued"
     session.add(db_job)
     session.commit()
@@ -86,3 +86,23 @@ def trigger_job(
         detail={"plugins": db_job.plugins, "targets": db_job.target_range},
     )
     return db_job
+
+
+@router.post("/{job_id}/cancel", response_model=ScanJobRead)
+def cancel_job(job_id: int, session: Session = Depends(get_session), current_user=Depends(require_role(Role.analyst))):
+    job = session.get(ScanJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="ScanJob not found")
+    actor = getattr(current_user, "username", "system")
+    success = cancel_scan_job(job_id, actor)
+    if not success:
+        raise HTTPException(status_code=404, detail="ScanJob not found")
+    session.refresh(job)
+    record_audit(
+        session,
+        actor=actor,
+        action="scan_job_cancelled",
+        resource=str(job_id),
+        detail={"status": job.status},
+    )
+    return job

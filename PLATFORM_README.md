@@ -8,7 +8,7 @@ See `platform/docs/ROADMAP.md` for a detailed gap analysis and next-milestone ch
 - Adds a FastAPI-based backend skeleton under `platform/backend` with SQLModel data models for the platform-wide normalized entities (Asset, ScanJob, Observation, RawEvidence, SecurityEvent, EvidenceLink, Report, BaselineProfile).
 - Provides JWT-backed authentication with demo roles (viewer/analyst/admin) so APIs enforce least-privilege access.
 - Exposes CRUD APIs for Assets, Scan Jobs, Observations, Evidence, Baselines, Security Events, and Evidence Links to unblock front-end wiring and initial data ingestion.
-- Adds an audit log surface (`/api/audit`) and a background scan trigger (`POST /api/scan-jobs/{id}/run`) that simulates read-only collections while recording per-target audit entries. CRUD, report generation, and analysis calls are also audited.
+- Adds an audit log surface (`/api/audit`) and a background scan trigger (`POST /api/scan-jobs/{id}/run`) backed by an in-process queue that simulates read-only collections while recording per-target audit entries. CRUD, report generation, and analysis calls are also audited. Jobs can be cancelled via `POST /api/scan-jobs/{id}/cancel`.
 - Adds analysis helpers: rule evaluation (YAML-driven) and anomaly detection (z-score + Isolation Forest) via `/api/analysis` endpoints.
 - Introduces report generation (HTML/PDF/DOCX) via `/api/reports/generate`, storing paths in the `Report` table for download/preview.
 - Includes a `Makefile` to start the backend (`make backend`), initialize the database (`make init-db`), or run backend unit tests (`make test-backend`).
@@ -68,6 +68,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `POST /api/analysis/rules/evaluate` — evaluate YAML rules against an observation-like payload.
 - `POST /api/analysis/anomaly` — run z-score and IsolationForest anomaly detection over metric arrays.
 - `POST /api/scan-jobs/{id}/run` — queue a scan job and execute it in the background with audit logging and simulated observations/evidence.
+- `POST /api/scan-jobs/{id}/cancel` — request cancellation; the queued/active job marks itself cancelled and records an audit entry.
 - `/api/audit` — list or insert audit trail entries.
 
 ## Next-phase plan (Milestone 2 goals)

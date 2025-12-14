@@ -32,6 +32,9 @@ requirements and highlights what is already implemented versus what remains.
 - **RBAC and audit expansion**: API routes now enforce viewer/analyst/admin
   roles with demo credentials and create audit entries for CRUD, analysis, and
   scan operations.
+- **Queued scans and cancellation**: Scan triggers now enqueue work onto an
+  in-process worker so multiple jobs can queue safely, and analysts can request
+  cancellation with per-target audit logs and status updates.
 - **Progress tracking**: This roadmap documents gaps vs. the full requirement set
   and proposes the next milestone targets below.
 

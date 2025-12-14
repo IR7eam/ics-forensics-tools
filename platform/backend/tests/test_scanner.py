@@ -1,7 +1,8 @@
 from sqlmodel import SQLModel, Session, create_engine, select
 
 from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
-from app.services.scanner import run_scan_job
+from app.services import scanner
+from app.services.scanner import cancel_scan_job, run_scan_job
 
 
 def test_run_scan_job_creates_observations_and_audit():
@@ -72,3 +73,40 @@ def test_side_effect_operations_are_denied():
         audits = session.exec(select(AuditLog)).all()
         assert any(a.action == "scan_target_denied" for a in audits)
         assert session.get(ScanJob, job_id).status == "completed"
+
+
+def test_cancel_scan_job_marks_state_and_halts_collection():
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        job = ScanJob(
+            name="cancel-me",
+            initiated_by="tester",
+            target_range=["10.0.0.1", "10.0.0.2"],
+            plugins=["modbus"],
+            parameters={},
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        job_id = job.id
+
+    cancel_scan_job(job_id, actor="tester", session_factory=lambda: Session(engine))
+    run_scan_job(
+        job_id,
+        actor="tester",
+        rate_limit_rps=0,
+        session_factory=lambda: Session(engine),
+        cancelled=lambda: True,
+    )
+
+    with Session(engine) as session:
+        job = session.get(ScanJob, job_id)
+        assert job.status == "cancelled"
+        assert job.finished_at is not None
+        observations = session.exec(select(Observation)).all()
+        assert observations == []
+        evidence = session.exec(select(RawEvidence)).all()
+        assert evidence == []
+    scanner._cancellations.clear()
