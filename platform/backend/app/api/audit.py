@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -14,9 +14,26 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 @router.get("/", response_model=List[AuditLogRead])
 def list_logs(
-    session: Session = Depends(get_session), current_user=Depends(require_role(Role.admin))
+    actor: Optional[str] = None,
+    action: Optional[str] = None,
+    resource: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 200,
+    session: Session = Depends(get_session),
+    current_user=Depends(require_role(Role.analyst)),
 ):
-    return session.exec(select(AuditLog).order_by(AuditLog.timestamp.desc())).all()
+    query = select(AuditLog)
+    if actor:
+        query = query.where(AuditLog.actor.contains(actor))
+    if action:
+        query = query.where(AuditLog.action.contains(action))
+    if resource:
+        query = query.where(AuditLog.resource.contains(resource))
+    if status:
+        query = query.where(AuditLog.status == status)
+
+    query = query.order_by(AuditLog.timestamp.desc()).limit(min(limit, 1000))
+    return session.exec(query).all()
 
 
 @router.post("/", response_model=AuditLogRead)

@@ -23,3 +23,22 @@ export async function login(username: string, password: string) {
   });
   return response.data as { access_token: string; token_type: string };
 }
+
+export async function fetchAuditLogs(filters: {
+  actor?: string;
+  action?: string;
+  resource?: string;
+  status?: string;
+  limit?: number;
+}) {
+  const response = await apiClient.get('/audit', { params: filters });
+  return response.data as Array<{
+    id: number;
+    actor: string;
+    action: string;
+    resource: string;
+    status: string;
+    detail: Record<string, unknown>;
+    timestamp: string;
+  }>;
+}

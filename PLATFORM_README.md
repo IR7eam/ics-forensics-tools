@@ -90,7 +90,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `POST /api/scan-jobs/{id}/cancel` — request cancellation; the queued/active job marks itself cancelled and records an audit entry.
 - `GET /api/evidence/{id}/download` — stream stored evidence bytes from `ICS_EVIDENCE_DIR` (default `./evidence`) and audit the download.
 - `GET /api/plugins` — enumerate plugin specs (protocol, allowed vs. dangerous operations, device types) for UI validation and operator review.
-- `/api/audit` — list or insert audit trail entries.
+- `/api/audit` — list or insert audit trail entries with optional `actor`/`action`/`resource`/`status` filters (viewable by analysts and admins).
 
 ### Collector modes
 - The backend defaults to **safe simulation** for all protocol plugins to avoid unintended impact. Set `ICS_USE_SIMULATED_PLUGINS=false` to attempt real read-only collectors for Modbus (pymodbus), SNMP (pysnmp), SSH (paramiko), and OPC UA (python-opcua). Missing dependencies or connection errors automatically fall back to simulation with an audit entry.
@@ -100,7 +100,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - **Collector integration**: wire existing forensic plugins into the platform scan pipeline, and add read-only collectors for IEC104/OPC UA/SNMP/SSH with rate-limit/timeout defaults mapped into `Observation` and `RawEvidence` records.
 - **Background execution & audit**: add a job runner (e.g., FastAPI BackgroundTasks or Celery-ready hooks) with per-request audit logs and RBAC checks on sensitive endpoints.
 - **Evidence delivery & UI hooks**: expose report download endpoints, attach evidence-link traversal helpers, and start the frontend scaffold (React + AntD) with pages for dashboard, assets, scan jobs, events, and report preview.
-- **Frontend skeleton (delivered in this step)**: a Vite + React + Ant Design single-page app with navigation, JWT login helper, and pages for dashboard, assets, scan jobs, events, evidence chains, reports, and settings.
+- **Frontend skeleton (delivered in this step)**: a Vite + React + Ant Design single-page app with navigation, JWT login helper, and pages for dashboard, assets, scan jobs, events, audit trail, evidence chains, reports, and settings.
 
 ## Developer commands
 - `make test` – run backend unit tests

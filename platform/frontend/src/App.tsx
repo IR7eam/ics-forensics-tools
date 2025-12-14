@@ -8,6 +8,7 @@ import { EventsPage } from './pages/Events';
 import { EvidenceChainPage } from './pages/EvidenceChain';
 import { ReportsPage } from './pages/Reports';
 import { SettingsPage } from './pages/Settings';
+import { AuditPage } from './pages/Audit';
 import { LoginPage } from './pages/Login';
 import { setAuthToken } from './api/client';
 
@@ -41,6 +42,7 @@ export function App() {
           <Route path="/assets" element={<AssetsPage />} />
           <Route path="/scan-jobs" element={<ScanJobsPage />} />
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/audit" element={<AuditPage />} />
           <Route path="/evidence" element={<EvidenceChainPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

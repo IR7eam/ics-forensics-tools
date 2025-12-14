@@ -7,7 +7,8 @@ import {
   FileSearchOutlined,
   BranchesOutlined,
   FileTextOutlined,
-  SettingOutlined
+  SettingOutlined,
+  AuditOutlined
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 
@@ -36,6 +37,9 @@ export function AppLayout({ children }: Props) {
           </Menu.Item>
           <Menu.Item key="/events" icon={<FileSearchOutlined />}>
             <Link to="/events">Events</Link>
+          </Menu.Item>
+          <Menu.Item key="/audit" icon={<AuditOutlined />}>
+            <Link to="/audit">Audit</Link>
           </Menu.Item>
           <Menu.Item key="/evidence" icon={<BranchesOutlined />}>
             <Link to="/evidence">Evidence Chain</Link>
