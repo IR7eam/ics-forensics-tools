@@ -9,6 +9,11 @@ interface ScanJob {
   target_range: string[];
   plugins: string[];
   status?: string;
+  rate_limit_rps?: number;
+  connect_timeout_s?: number;
+  read_timeout_s?: number;
+  max_retries?: number;
+  retry_backoff_s?: number;
 }
 
 interface PluginSpec {
@@ -48,7 +53,12 @@ export function ScanJobsPage() {
       name: values.name,
       initiated_by: values.initiated_by || 'ui',
       target_range: values.target_range ? values.target_range.split(',').map((t: string) => t.trim()) : [],
-      plugins: values.plugins ? values.plugins.split(',').map((p: string) => p.trim()) : []
+      plugins: values.plugins ? values.plugins.split(',').map((p: string) => p.trim()) : [],
+      rate_limit_rps: values.rate_limit_rps ? Number(values.rate_limit_rps) : 1,
+      connect_timeout_s: values.connect_timeout_s ? Number(values.connect_timeout_s) : 3,
+      read_timeout_s: values.read_timeout_s ? Number(values.read_timeout_s) : 5,
+      max_retries: values.max_retries ? Number(values.max_retries) : 1,
+      retry_backoff_s: values.retry_backoff_s ? Number(values.retry_backoff_s) : 0.5
     };
     try {
       await apiClient.post('/scan-jobs', payload);
@@ -138,6 +148,21 @@ export function ScanJobsPage() {
               </Space>
             )
           },
+          {
+            title: 'Limits',
+            dataIndex: 'rate_limit_rps',
+            render: (_, row: ScanJob) => (
+              <div>
+                <div>RPS: {row.rate_limit_rps ?? '1'}</div>
+                <div>
+                  Timeouts: {row.connect_timeout_s ?? '3'}s / {row.read_timeout_s ?? '5'}s
+                </div>
+                <div>
+                  Retries: {row.max_retries ?? '1'} @ {row.retry_backoff_s ?? '0.5'}s
+                </div>
+              </div>
+            )
+          },
           { title: 'Status', dataIndex: 'status', render: (status?: string) => <Tag>{status || 'n/a'}</Tag> },
           {
             title: 'Actions',
@@ -168,6 +193,21 @@ export function ScanJobsPage() {
           </Form.Item>
           <Form.Item name="plugins" label="Plugins (comma separated)">
             <Input placeholder="modbus, opcua, snmp" />
+          </Form.Item>
+          <Form.Item name="rate_limit_rps" label="Rate limit (requests/sec)" initialValue={1}>
+            <Input type="number" min={0} step={0.1} />
+          </Form.Item>
+          <Form.Item name="connect_timeout_s" label="Connect timeout (s)" initialValue={3}>
+            <Input type="number" min={0.1} step={0.1} />
+          </Form.Item>
+          <Form.Item name="read_timeout_s" label="Read timeout (s)" initialValue={5}>
+            <Input type="number" min={0.1} step={0.1} />
+          </Form.Item>
+          <Form.Item name="max_retries" label="Max retries" initialValue={1}>
+            <Input type="number" min={0} step={1} />
+          </Form.Item>
+          <Form.Item name="retry_backoff_s" label="Retry backoff (s)" initialValue={0.5}>
+            <Input type="number" min={0} step={0.1} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block>

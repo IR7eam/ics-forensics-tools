@@ -41,23 +41,32 @@ def _default_evidence_dir():
 def run_scan_job(
     job_id: int,
     actor: str,
-    rate_limit_rps: float = 1.0,
+    rate_limit_rps: Optional[float] = None,
     session_factory: Callable[[], Session] = _default_session_factory,
     targets: Optional[Iterable[str]] = None,
     cancelled: Optional[Callable[[], bool]] = None,
     evidence_dir: Optional[str] = None,
+    collector_func: Callable = simulate_plugin_collection,
 ) -> None:
-    sleep_interval = 1.0 / rate_limit_rps if rate_limit_rps > 0 else 0
+    settings = get_settings()
     with session_factory() as session:
         job = session.get(ScanJob, job_id)
         if not job:
             return
+
+        job.rate_limit_rps = rate_limit_rps or job.rate_limit_rps or settings.default_rate_limit_rps
+        job.connect_timeout_s = job.connect_timeout_s or settings.default_connect_timeout
+        job.read_timeout_s = job.read_timeout_s or settings.default_read_timeout
+        job.max_retries = job.max_retries if job.max_retries is not None else settings.max_retry_attempts
+        job.retry_backoff_s = job.retry_backoff_s or settings.retry_backoff_seconds
 
         job.status = "running"
         job.started_at = datetime.utcnow()
         session.add(job)
         session.commit()
         target_list = list(targets or job.target_range)
+
+    sleep_interval = 1.0 / job.rate_limit_rps if job.rate_limit_rps > 0 else 0
 
     for target in target_list:
         if cancelled and cancelled():
@@ -85,61 +94,100 @@ def run_scan_job(
             plugin_names = current_job.plugins or ["generic"]
             for plugin_name in plugin_names:
                 spec = PLUGIN_REGISTRY.get(plugin_name, PLUGIN_REGISTRY["generic"])
-                try:
-                    allowed_ops = validate_operations(
-                        spec,
-                        requested_ops=current_job.parameters.get("operations"),
-                        allow_side_effects=current_job.parameters.get("allow_side_effects", False),
-                    )
-                    params = dict(current_job.parameters)
-                    params["operations"] = allowed_ops
-                    observation_payload, evidence_payload = simulate_plugin_collection(
-                        spec, target, params, evidence_dir=Path(evidence_dir or _default_evidence_dir())
-                    )
+                attempts = 0
+                while attempts <= current_job.max_retries:
+                    try:
+                        allowed_ops = validate_operations(
+                            spec,
+                            requested_ops=current_job.parameters.get("operations"),
+                            allow_side_effects=current_job.parameters.get("allow_side_effects", False),
+                        )
+                        params = dict(current_job.parameters)
+                        params["operations"] = allowed_ops
+                        params.setdefault("timeouts", {})
+                        params["timeouts"].update(
+                            {
+                                "connect_s": current_job.connect_timeout_s,
+                                "read_s": current_job.read_timeout_s,
+                            }
+                        )
+                        observation_payload, evidence_payload = collector_func(
+                            spec,
+                            target,
+                            params,
+                            evidence_dir=Path(evidence_dir or _default_evidence_dir()),
+                        )
 
-                    observation = Observation(**observation_payload)
-                    inner.add(observation)
-                    inner.commit()
-                    inner.refresh(observation)
+                        observation_payload.setdefault("metrics", {})[
+                            "attempts"
+                        ] = attempts + 1
+                        observation = Observation(**observation_payload)
+                        inner.add(observation)
+                        inner.commit()
+                        inner.refresh(observation)
 
-                    evidence = RawEvidence(observation_id=observation.id, **evidence_payload)
-                    inner.add(evidence)
-                    record_audit(
-                        inner,
-                        actor=actor,
-                        action="scan_target",
-                        resource=target,
-                        detail={
-                            "job_id": job_id,
-                            "plugin": plugin_name,
-                            "protocol": spec.protocol,
-                            "read_only": spec.read_only,
-                            "operations": allowed_ops,
-                        },
-                    )
-                    inner.commit()
-                except PermissionError as exc:
-                    record_audit(
-                        inner,
-                        actor=actor,
-                        action="scan_target_denied",
-                        resource=target,
-                        status="denied",
-                        detail={
-                            "job_id": job_id,
-                            "plugin": plugin_name,
-                            "reason": str(exc),
-                        },
-                    )
-                except Exception as exc:  # pragma: no cover - defensive
-                    record_audit(
-                        inner,
-                        actor=actor,
-                        action="scan_target_error",
-                        resource=target,
-                        status="error",
-                        detail={"job_id": job_id, "plugin": plugin_name, "reason": str(exc)},
-                    )
+                        evidence = RawEvidence(observation_id=observation.id, **evidence_payload)
+                        inner.add(evidence)
+                        record_audit(
+                            inner,
+                            actor=actor,
+                            action="scan_target",
+                            resource=target,
+                            detail={
+                                "job_id": job_id,
+                                "plugin": plugin_name,
+                                "protocol": spec.protocol,
+                                "read_only": spec.read_only,
+                                "operations": allowed_ops,
+                                "attempt": attempts + 1,
+                            },
+                        )
+                        inner.commit()
+                        break
+                    except PermissionError as exc:
+                        record_audit(
+                            inner,
+                            actor=actor,
+                            action="scan_target_denied",
+                            resource=target,
+                            status="denied",
+                            detail={
+                                "job_id": job_id,
+                                "plugin": plugin_name,
+                                "reason": str(exc),
+                            },
+                        )
+                        break
+                    except TimeoutError as exc:
+                        attempts += 1
+                        record_audit(
+                            inner,
+                            actor=actor,
+                            action="scan_target_timeout",
+                            resource=target,
+                            status="timeout",
+                            detail={
+                                "job_id": job_id,
+                                "plugin": plugin_name,
+                                "attempt": attempts,
+                                "max_retries": current_job.max_retries,
+                                "reason": str(exc),
+                            },
+                        )
+                        inner.commit()
+                        if attempts > current_job.max_retries:
+                            break
+                        sleep(current_job.retry_backoff_s * (2 ** (attempts - 1)))
+                    except Exception as exc:  # pragma: no cover - defensive
+                        record_audit(
+                            inner,
+                            actor=actor,
+                            action="scan_target_error",
+                            resource=target,
+                            status="error",
+                            detail={"job_id": job_id, "plugin": plugin_name, "reason": str(exc)},
+                        )
+                        break
 
         if sleep_interval:
             sleep(sleep_interval)

@@ -23,10 +23,13 @@ requirements and highlights what is already implemented versus what remains.
 
 ## Newly added in this drop
 - **Protocol-aware scan simulation**: Registry entries for Modbus/TCP, OPC UA,
-  IEC104, SNMP, and SSH (plus a generic fallback), including device_type hints,
-  allowed read-only operations, and latency defaults. The scanner now emits
-  per-plugin observations, raw evidence with SHA-256 hashes, and audit detail
-  about protocol/read-only posture.
+  IEC104, SNMP, SSH, S7Comm, and CIP (plus a generic fallback), including
+  device_type hints, allowed read-only operations, and latency defaults. The
+  scanner now emits per-plugin observations, raw evidence with SHA-256 hashes,
+  and audit detail about protocol/read-only posture.
+- **Retry/backoff and timeouts**: Scan jobs include connect/read timeouts,
+  retry counts, and exponential backoff so collection remains conservative and
+  aligns with the read-only safety posture.
 - **Safety defaults**: All simulated plugins are read-only, with explicit notes
   around opt-in operations (e.g., IEC104 total call, SSH command whitelist).
 - **RBAC and audit expansion**: API routes now enforce viewer/analyst/admin

@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlmodel import Session, select
 
+from app.core.config import get_settings
 from app.core.security import Role, require_role
 from app.db.session import get_session
 from app.models.core import ScanJob
@@ -20,7 +21,14 @@ def list_jobs(session: Session = Depends(get_session), current_user=Depends(requ
 
 @router.post("/", response_model=ScanJobRead)
 def create_job(job: ScanJobCreate, session: Session = Depends(get_session), current_user=Depends(require_role(Role.analyst))):
-    db_job = ScanJob.from_orm(job)
+    settings = get_settings()
+    payload = job.dict()
+    payload.setdefault("connect_timeout_s", settings.default_connect_timeout)
+    payload.setdefault("read_timeout_s", settings.default_read_timeout)
+    payload.setdefault("rate_limit_rps", settings.default_rate_limit_rps)
+    payload.setdefault("max_retries", settings.max_retry_attempts)
+    payload.setdefault("retry_backoff_s", settings.retry_backoff_seconds)
+    db_job = ScanJob.from_orm(ScanJobCreate(**payload))
     session.add(db_job)
     session.commit()
     session.refresh(db_job)

@@ -27,6 +27,11 @@ class ScanJob(SQLModel, table=True):
     target_range: List[str] = Field(default_factory=list, sa_column=Column(SAJSON))
     plugins: List[str] = Field(default_factory=list, sa_column=Column(SAJSON))
     parameters: dict = Field(default_factory=dict, sa_column=Column(SAJSON))
+    connect_timeout_s: float = 3.0
+    read_timeout_s: float = 5.0
+    rate_limit_rps: float = 1.0
+    max_retries: int = 1
+    retry_backoff_s: float = 0.5
     status: str = "pending"
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

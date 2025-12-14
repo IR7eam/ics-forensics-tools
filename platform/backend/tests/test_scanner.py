@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Session, create_engine, select
 from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
 from app.services import scanner
 from app.services.scanner import cancel_scan_job, run_scan_job
+from app.services.plugins import simulate_plugin_collection
 
 
 def test_run_scan_job_creates_observations_and_audit():
@@ -115,3 +116,44 @@ def test_cancel_scan_job_marks_state_and_halts_collection():
         evidence = session.exec(select(RawEvidence)).all()
         assert evidence == []
     scanner._cancellations.clear()
+
+
+def test_scan_job_retries_on_timeout(monkeypatch):
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    calls = {"count": 0}
+
+    def flaky_collector(spec, target, params, evidence_dir):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise TimeoutError("simulated timeout")
+        return simulate_plugin_collection(spec, target, params, evidence_dir)
+
+    with Session(engine) as session:
+        job = ScanJob(
+            name="retry-job",
+            initiated_by="tester",
+            target_range=["10.0.0.9"],
+            plugins=["modbus"],
+            parameters={},
+            max_retries=1,
+            retry_backoff_s=0,
+            rate_limit_rps=0,
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        job_id = job.id
+
+    run_scan_job(job_id, actor="tester", session_factory=lambda: Session(engine), collector_func=flaky_collector)
+
+    with Session(engine) as session:
+        observations = session.exec(select(Observation)).all()
+        assert len(observations) == 1
+        assert observations[0].metrics.get("attempts") == 2
+
+        audits = session.exec(select(AuditLog)).all()
+        assert any(a.action == "scan_target_timeout" for a in audits)
+        assert any(a.action == "scan_job_completed" for a in audits)
+        assert session.get(ScanJob, job_id).status == "completed"

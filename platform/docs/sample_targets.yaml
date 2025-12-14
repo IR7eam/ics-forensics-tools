@@ -16,3 +16,8 @@
   target_range: ["198.51.100.11"]
   plugins: ["iec104"]
   notes: "StartDT/TestFR only; total call disabled"
+
+- name: s7-cip-combo
+  target_range: ["192.0.2.40"]
+  plugins: ["s7comm", "cip"]
+  notes: "S7 SZL read + CIP ListIdentity; read-only"

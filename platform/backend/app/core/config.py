@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 12
     report_dir: str = "./reports"
     evidence_dir: str = "./evidence"
+    default_connect_timeout: float = 3.0
+    default_read_timeout: float = 5.0
+    default_rate_limit_rps: float = 1.0
+    max_retry_attempts: int = 1
+    retry_backoff_seconds: float = 0.5
     demo_users: List[str] = [
         "admin:admin:admin",
         "analyst:analyst:analyst",

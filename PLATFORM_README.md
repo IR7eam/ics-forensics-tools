@@ -58,9 +58,9 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Report**: generated files and parameters (HTML/PDF/DOCX in later milestones).
 
 ## Progress update
-- **Protocol registry & simulation**: Added a protocol-aware plugin registry (Modbus, OPC UA, IEC104, SNMP, SSH, and generic) with read-only operation lists and device_type hints. The scan runner now emits per-plugin observations, SHA-256–hashed raw evidence, and protocol-aware audit details.
+- **Protocol registry & simulation**: Added a protocol-aware plugin registry (Modbus, OPC UA, IEC104, SNMP, SSH, S7Comm, CIP, and generic) with read-only operation lists and device_type hints. The scan runner now emits per-plugin observations, SHA-256–hashed raw evidence, and protocol-aware audit details.
 - **Roadmap tracking**: Documented current coverage, gaps, and upcoming milestones in `platform/docs/ROADMAP.md` to clarify what remains for full delivery.
-- **Safety enforcement**: Scan jobs now enforce operation allowlists and require explicit opt-in for side-effecting protocol actions, recording denied attempts in the audit log.
+- **Safety enforcement**: Scan jobs now enforce operation allowlists and require explicit opt-in for side-effecting protocol actions, recording denied attempts in the audit log. Retry/backoff and timeout/rate-limit fields (defaults: connect 3s, read 5s, 1 retry with 0.5s exponential backoff) keep collectors conservative.
 - **Plugin registry API + UI surfacing**: `/api/plugins` lists per-protocol allowed/dangerous operations, device types, and descriptions so the frontend can highlight read-only defaults and red-flag opt-in steps in the Settings page.
 - **Baseline UX and attack-stage awareness**: Settings now offers baseline train/evaluate controls, and the dashboard visualizes attack-stage coverage using `/analysis/attack-stages` so analysts can track drift and stage trends.
 - **Rule-pack management**: Analysts can upload/list/toggle rule packs via `/api/rules` with audit coverage and test them in the Settings UI to validate detection logic.
