@@ -47,6 +47,7 @@ The SQLModel tables mirror the normalized evidence schema:
 ## Progress update
 - **Protocol registry & simulation**: Added a protocol-aware plugin registry (Modbus, OPC UA, IEC104, SNMP, SSH, and generic) with read-only operation lists and device_type hints. The scan runner now emits per-plugin observations, SHA-256–hashed raw evidence, and protocol-aware audit details.
 - **Roadmap tracking**: Documented current coverage, gaps, and upcoming milestones in `platform/docs/ROADMAP.md` to clarify what remains for full delivery.
+- **Safety enforcement**: Scan jobs now enforce operation allowlists and require explicit opt-in for side-effecting protocol actions, recording denied attempts in the audit log.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.

@@ -12,7 +12,11 @@ from sqlmodel import Session
 
 from app.db.session import engine
 from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
-from app.services.plugins import PLUGIN_REGISTRY, simulate_plugin_collection
+from app.services.plugins import (
+    PLUGIN_REGISTRY,
+    simulate_plugin_collection,
+    validate_operations,
+)
 
 
 def _default_session_factory():
@@ -57,30 +61,61 @@ def run_scan_job(
             plugin_names = current_job.plugins or ["generic"]
             for plugin_name in plugin_names:
                 spec = PLUGIN_REGISTRY.get(plugin_name, PLUGIN_REGISTRY["generic"])
-                observation_payload, evidence_payload = simulate_plugin_collection(
-                    spec, target, current_job.parameters
-                )
+                try:
+                    allowed_ops = validate_operations(
+                        spec,
+                        requested_ops=current_job.parameters.get("operations"),
+                        allow_side_effects=current_job.parameters.get("allow_side_effects", False),
+                    )
+                    params = dict(current_job.parameters)
+                    params["operations"] = allowed_ops
+                    observation_payload, evidence_payload = simulate_plugin_collection(
+                        spec, target, params
+                    )
 
-                observation = Observation(**observation_payload)
-                inner.add(observation)
-                inner.commit()
-                inner.refresh(observation)
+                    observation = Observation(**observation_payload)
+                    inner.add(observation)
+                    inner.commit()
+                    inner.refresh(observation)
 
-                evidence = RawEvidence(observation_id=observation.id, **evidence_payload)
-                inner.add(evidence)
-                record_audit(
-                    inner,
-                    actor=actor,
-                    action="scan_target",
-                    resource=target,
-                    detail={
-                        "job_id": job_id,
-                        "plugin": plugin_name,
-                        "protocol": spec.protocol,
-                        "read_only": spec.read_only,
-                    },
-                )
-                inner.commit()
+                    evidence = RawEvidence(observation_id=observation.id, **evidence_payload)
+                    inner.add(evidence)
+                    record_audit(
+                        inner,
+                        actor=actor,
+                        action="scan_target",
+                        resource=target,
+                        detail={
+                            "job_id": job_id,
+                            "plugin": plugin_name,
+                            "protocol": spec.protocol,
+                            "read_only": spec.read_only,
+                            "operations": allowed_ops,
+                        },
+                    )
+                    inner.commit()
+                except PermissionError as exc:
+                    record_audit(
+                        inner,
+                        actor=actor,
+                        action="scan_target_denied",
+                        resource=target,
+                        status="denied",
+                        detail={
+                            "job_id": job_id,
+                            "plugin": plugin_name,
+                            "reason": str(exc),
+                        },
+                    )
+                except Exception as exc:  # pragma: no cover - defensive
+                    record_audit(
+                        inner,
+                        actor=actor,
+                        action="scan_target_error",
+                        resource=target,
+                        status="error",
+                        detail={"job_id": job_id, "plugin": plugin_name, "reason": str(exc)},
+                    )
 
         if sleep_interval:
             sleep(sleep_interval)

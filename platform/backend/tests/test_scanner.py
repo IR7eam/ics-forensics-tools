@@ -41,3 +41,34 @@ def test_run_scan_job_creates_observations_and_audit():
         audits = session.exec(select(AuditLog)).all()
         assert any(a.action == "scan_job_completed" for a in audits)
         assert len(audits) >= 3
+
+
+def test_side_effect_operations_are_denied():
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        job = ScanJob(
+            name="sensitive",
+            initiated_by="tester",
+            target_range=["10.0.0.1"],
+            plugins=["modbus"],
+            parameters={"operations": ["fc6"]},
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        job_id = job.id
+
+    run_scan_job(job_id, actor="tester", rate_limit_rps=0, session_factory=lambda: Session(engine))
+
+    with Session(engine) as session:
+        observations = session.exec(select(Observation)).all()
+        assert observations == []
+
+        evidence = session.exec(select(RawEvidence)).all()
+        assert evidence == []
+
+        audits = session.exec(select(AuditLog)).all()
+        assert any(a.action == "scan_target_denied" for a in audits)
+        assert session.get(ScanJob, job_id).status == "completed"

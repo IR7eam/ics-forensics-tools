@@ -22,6 +22,8 @@ class PluginSpec:
     description: str
     read_only: bool = True
     allowed_operations: List[str] = field(default_factory=list)
+    dangerous_operations: List[str] = field(default_factory=list)
+    enforce_opt_in: bool = True
     notes: str = ""
 
 
@@ -33,6 +35,7 @@ PLUGIN_REGISTRY: Dict[str, PluginSpec] = {
         default_port=502,
         description="Read-only Modbus/TCP identification and register sampling",
         allowed_operations=["fc3", "fc4", "diagnostic"],
+        dangerous_operations=["fc5", "fc6", "fc15", "fc16"],
         notes="Limited to read functions and conservative range probing with rate limits.",
     ),
     "opcua": PluginSpec(
@@ -50,6 +53,7 @@ PLUGIN_REGISTRY: Dict[str, PluginSpec] = {
         default_port=2404,
         description="IEC 60870-5-104 link bring-up with optional total call (disabled by default)",
         allowed_operations=["startdt", "testfr"],
+        dangerous_operations=["total_call"],
         notes="C_IC_NA_1 total call must be opt-in via configuration.",
     ),
     "snmp": PluginSpec(
@@ -59,6 +63,7 @@ PLUGIN_REGISTRY: Dict[str, PluginSpec] = {
         default_port=161,
         description="SNMPv2c/v3 read-only sysDescr/sysName/ifTable sampling",
         allowed_operations=["get", "getnext", "walk"],
+        dangerous_operations=["set"],
     ),
     "ssh": PluginSpec(
         name="ssh",
@@ -67,6 +72,7 @@ PLUGIN_REGISTRY: Dict[str, PluginSpec] = {
         default_port=22,
         description="SSH banner/hostkey probing with optional safe command whitelist",
         allowed_operations=["banner", "hostkey", "uname", "uptime", "ip_a"],
+        dangerous_operations=["sudo", "shell", "configure_terminal", "reload"],
         notes="Side-effecting commands remain disabled unless explicitly allowed in config.",
     ),
     "generic": PluginSpec(
@@ -78,6 +84,23 @@ PLUGIN_REGISTRY: Dict[str, PluginSpec] = {
         allowed_operations=["probe"],
     ),
 }
+
+
+def validate_operations(spec: PluginSpec, requested_ops: List[str] | None, allow_side_effects: bool) -> List[str]:
+    """Return the operations to perform after enforcing read-only policy."""
+
+    if not requested_ops:
+        return spec.allowed_operations
+
+    unsupported = [op for op in requested_ops if op not in spec.allowed_operations + spec.dangerous_operations]
+    if unsupported:
+        raise ValueError(f"Unsupported operations for {spec.name}: {unsupported}")
+
+    dangerous = [op for op in requested_ops if op in spec.dangerous_operations]
+    if dangerous and (spec.enforce_opt_in and not allow_side_effects):
+        raise PermissionError(f"Side-effecting operations require opt-in: {dangerous}")
+
+    return requested_ops
 
 
 def simulate_plugin_collection(spec: PluginSpec, target: str, parameters: Dict) -> Tuple[dict, dict]:
@@ -93,6 +116,9 @@ def simulate_plugin_collection(spec: PluginSpec, target: str, parameters: Dict) 
     evidence_hash = "sha256:" + sha256(raw_payload).hexdigest()
     storage_path = f"simulated://{spec.protocol}/{target}/{timestamp.isoformat()}"
 
+    requested_ops = parameters.get("operations")
+    allowed_ops = requested_ops or spec.allowed_operations
+
     observation_payload = {
         "asset_id": None,
         "protocol": spec.protocol,
@@ -101,7 +127,7 @@ def simulate_plugin_collection(spec: PluginSpec, target: str, parameters: Dict) 
             "target": target,
             "plugin": spec.name,
             "device_type": spec.device_types[0] if spec.device_types else "unknown",
-            "operations": spec.allowed_operations,
+            "operations": allowed_ops,
             "parameters": parameters,
             "read_only": spec.read_only,
         },
