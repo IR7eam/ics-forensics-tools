@@ -17,11 +17,12 @@ from app.db.session import engine
 from app.models.core import Observation, RawEvidence, ScanJob
 from app.core.config import get_settings
 from app.services.audit import record_audit
-from app.services.plugins import (
-    PLUGIN_REGISTRY,
-    simulate_plugin_collection,
-    validate_operations,
+from app.services.collectors import (
+    CollectorDependencyError,
+    CollectorExecutionError,
+    collect_with_plugin,
 )
+from app.services.plugins import PLUGIN_REGISTRY, simulate_plugin_collection, validate_operations
 
 
 _worker_started = False
@@ -46,7 +47,7 @@ def run_scan_job(
     targets: Optional[Iterable[str]] = None,
     cancelled: Optional[Callable[[], bool]] = None,
     evidence_dir: Optional[str] = None,
-    collector_func: Callable = simulate_plugin_collection,
+    collector_func: Callable | None = None,
 ) -> None:
     settings = get_settings()
     with session_factory() as session:
@@ -67,6 +68,7 @@ def run_scan_job(
         target_list = list(targets or job.target_range)
 
     sleep_interval = 1.0 / job.rate_limit_rps if job.rate_limit_rps > 0 else 0
+    settings = get_settings()
 
     for target in target_list:
         if cancelled and cancelled():
@@ -97,6 +99,14 @@ def run_scan_job(
                 attempts = 0
                 while attempts <= current_job.max_retries:
                     try:
+                        collector = collector_func
+                        if collector is None:
+                            collector = (
+                                simulate_plugin_collection
+                                if settings.use_simulated_plugins
+                                else collect_with_plugin
+                            )
+
                         allowed_ops = validate_operations(
                             spec,
                             requested_ops=current_job.parameters.get("operations"),
@@ -111,12 +121,29 @@ def run_scan_job(
                                 "read_s": current_job.read_timeout_s,
                             }
                         )
-                        observation_payload, evidence_payload = collector_func(
-                            spec,
-                            target,
-                            params,
-                            evidence_dir=Path(evidence_dir or _default_evidence_dir()),
-                        )
+                        evidence_root = Path(evidence_dir or _default_evidence_dir())
+                        try:
+                            observation_payload, evidence_payload = collector(
+                                spec,
+                                target,
+                                params,
+                                evidence_dir=evidence_root,
+                            )
+                        except (CollectorDependencyError, CollectorExecutionError) as exc:
+                            record_audit(
+                                inner,
+                                actor=actor,
+                                action="collector_fallback",
+                                resource=target,
+                                status="fallback",  # soft warning
+                                detail={"job_id": job_id, "plugin": plugin_name, "reason": str(exc)},
+                            )
+                            observation_payload, evidence_payload = simulate_plugin_collection(
+                                spec,
+                                target,
+                                params,
+                                evidence_dir=evidence_root,
+                            )
 
                         observation_payload.setdefault("metrics", {})[
                             "attempts"

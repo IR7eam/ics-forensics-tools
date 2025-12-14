@@ -43,11 +43,16 @@ requirements and highlights what is already implemented versus what remains.
   baselines, automatically emitting security events for significant drift.
 - **Progress tracking**: This roadmap documents gaps vs. the full requirement set
   and proposes the next milestone targets below.
+- **Collector toggle + fallback**: Runtime switch (`ICS_USE_SIMULATED_PLUGINS`)
+  to attempt real read-only collectors (Modbus/SNMP/SSH/OPC UA) when optional
+  dependencies are installed, with automatic audited fallback to simulation on
+  missing deps or connection failures.
 
 ## Gaps toward the full requirements
-- **Real protocol collectors**: Need functional read-only collectors for
-  Modbus/TCP, OPC UA, IEC104, SNMP, SSH (plus S7/CIP wiring), with timeouts,
-  concurrency, and rate limits enforced in network calls.
+- **Real protocol collectors**: Implement deeper parsing and coverage for
+  Modbus/TCP, OPC UA, IEC104, SNMP, SSH (plus S7/CIP wiring) beyond the current
+  socket-probe and optional client integrations, with structured raw captures
+  and adaptive limits.
 - **Device coverage & fingerprinting**: Per-device-type enrichment (vendor,
   model, firmware) from protocol responses and mapping into assets/observations.
 - **RBAC and audit depth**: Harden role checks (custom user store, configurable

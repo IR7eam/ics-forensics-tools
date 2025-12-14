@@ -91,6 +91,10 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `GET /api/plugins` — enumerate plugin specs (protocol, allowed vs. dangerous operations, device types) for UI validation and operator review.
 - `/api/audit` — list or insert audit trail entries.
 
+### Collector modes
+- The backend defaults to **safe simulation** for all protocol plugins to avoid unintended impact. Set `ICS_USE_SIMULATED_PLUGINS=false` to attempt real read-only collectors for Modbus (pymodbus), SNMP (pysnmp), SSH (paramiko), and OPC UA (python-opcua). Missing dependencies or connection errors automatically fall back to simulation with an audit entry.
+- Optional protocol clients are intentionally **not** required by default; install them explicitly if you need live collection: `pip install pymodbus pysnmp paramiko opcua`.
+
 ## Next-phase plan (Milestone 2 goals)
 - **Collector integration**: wire existing forensic plugins into the platform scan pipeline, and add read-only collectors for IEC104/OPC UA/SNMP/SSH with rate-limit/timeout defaults mapped into `Observation` and `RawEvidence` records.
 - **Background execution & audit**: add a job runner (e.g., FastAPI BackgroundTasks or Celery-ready hooks) with per-request audit logs and RBAC checks on sensitive endpoints.

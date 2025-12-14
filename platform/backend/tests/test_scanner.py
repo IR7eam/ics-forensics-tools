@@ -3,9 +3,11 @@ from pathlib import Path
 from sqlmodel import SQLModel, Session, create_engine, select
 
 from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
+from app.core.config import get_settings
 from app.services import scanner
 from app.services.scanner import cancel_scan_job, run_scan_job
 from app.services.plugins import simulate_plugin_collection
+from app.services.collectors import CollectorDependencyError
 
 
 def test_run_scan_job_creates_observations_and_audit():
@@ -157,3 +159,42 @@ def test_scan_job_retries_on_timeout(monkeypatch):
         assert any(a.action == "scan_target_timeout" for a in audits)
         assert any(a.action == "scan_job_completed" for a in audits)
         assert session.get(ScanJob, job_id).status == "completed"
+
+
+def test_real_collector_falls_back_to_simulation(monkeypatch, tmp_path):
+    settings = get_settings()
+    original = settings.use_simulated_plugins
+    settings.use_simulated_plugins = False
+
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    def missing_dep_collector(*args, **kwargs):
+        raise CollectorDependencyError("missing optional dep")
+
+    with Session(engine) as session:
+        job = ScanJob(
+            name="real-mode", initiated_by="tester", target_range=["10.0.0.5"], plugins=["modbus"], parameters={}
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        job_id = job.id
+
+    monkeypatch.setattr(scanner, "collect_with_plugin", missing_dep_collector)
+    run_scan_job(
+        job_id,
+        actor="tester",
+        session_factory=lambda: Session(engine),
+        collector_func=None,
+        evidence_dir=tmp_path,
+    )
+
+    with Session(engine) as session:
+        observations = session.exec(select(Observation)).all()
+        audits = session.exec(select(AuditLog)).all()
+        assert len(observations) == 1
+        assert any(a.action == "collector_fallback" for a in audits)
+        assert session.get(ScanJob, job_id).status == "completed"
+
+    settings.use_simulated_plugins = original
