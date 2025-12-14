@@ -61,6 +61,7 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Protocol registry & simulation**: Added a protocol-aware plugin registry (Modbus, OPC UA, IEC104, SNMP, SSH, and generic) with read-only operation lists and device_type hints. The scan runner now emits per-plugin observations, SHA-256–hashed raw evidence, and protocol-aware audit details.
 - **Roadmap tracking**: Documented current coverage, gaps, and upcoming milestones in `platform/docs/ROADMAP.md` to clarify what remains for full delivery.
 - **Safety enforcement**: Scan jobs now enforce operation allowlists and require explicit opt-in for side-effecting protocol actions, recording denied attempts in the audit log.
+- **Plugin registry API + UI surfacing**: `/api/plugins` lists per-protocol allowed/dangerous operations, device types, and descriptions so the frontend can highlight read-only defaults and red-flag opt-in steps in the Settings page.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.
@@ -80,6 +81,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `POST /api/analysis/anomaly` — run z-score and IsolationForest anomaly detection over metric arrays.
 - `POST /api/scan-jobs/{id}/run` — queue a scan job and execute it in the background with audit logging and simulated observations/evidence.
 - `POST /api/scan-jobs/{id}/cancel` — request cancellation; the queued/active job marks itself cancelled and records an audit entry.
+- `GET /api/plugins` — enumerate plugin specs (protocol, allowed vs. dangerous operations, device types) for UI validation and operator review.
 - `/api/audit` — list or insert audit trail entries.
 
 ## Next-phase plan (Milestone 2 goals)
@@ -96,3 +98,5 @@ source .venv/bin/activate
 pip install -r backend/requirements.txt
 make test-backend
 ```
+
+Sample job payloads for manual testing live in `platform/docs/sample_targets.yaml`; each entry corresponds to `name`, `target_range`, and `plugins` fields you can paste into the Scan Jobs form. All presets stick to read-only operations.

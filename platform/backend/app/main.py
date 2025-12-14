@@ -14,6 +14,7 @@ from app.api import (
     evidence_links,
     reports,
     audit,
+    plugins,
 )
 from app.core.config import get_settings
 from app.db.session import init_db
@@ -41,6 +42,7 @@ app.include_router(baselines.router, prefix=settings.api_prefix)
 app.include_router(analysis.router, prefix=settings.api_prefix)
 app.include_router(reports.router, prefix=settings.api_prefix)
 app.include_router(audit.router, prefix=settings.api_prefix)
+app.include_router(plugins.router, prefix=settings.api_prefix)
 
 
 @app.get("/")

@@ -53,6 +53,7 @@ cd platform
 docker compose up --build
 ```
 Backend will listen on `http://localhost:8000`, frontend on `http://localhost:4173`.
+Use the new `/api/plugins` endpoint (also visible in the frontend Settings page) to review allowed vs. dangerous protocol operations for Modbus/OPC UA/IEC104/SNMP/SSH before queueing scan jobs.
 ## Usage
 
 ### General application arguments:

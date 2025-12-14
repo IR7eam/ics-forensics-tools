@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Form, Input, Modal, Table, Tag, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Form, Input, Modal, Space, Table, Tag, Tooltip, message } from 'antd';
 import { apiClient } from '../api/client';
 
 interface ScanJob {
@@ -11,10 +11,20 @@ interface ScanJob {
   status?: string;
 }
 
+interface PluginSpec {
+  name: string;
+  protocol: string;
+  device_types: string[];
+  allowed_operations: string[];
+  dangerous_operations: string[];
+  description: string;
+}
+
 export function ScanJobsPage() {
   const [jobs, setJobs] = useState<ScanJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [pluginSpecs, setPluginSpecs] = useState<PluginSpec[]>([]);
 
   const fetchJobs = () => {
     setLoading(true);
@@ -27,6 +37,10 @@ export function ScanJobsPage() {
 
   useEffect(() => {
     fetchJobs();
+    apiClient
+      .get<PluginSpec[]>('/plugins')
+      .then((res) => setPluginSpecs(res.data))
+      .catch(() => message.error('Failed to load plugin registry'));
   }, []);
 
   const handleCreate = async (values: any) => {
@@ -46,8 +60,45 @@ export function ScanJobsPage() {
     }
   };
 
+  const handleRun = async (jobId: number) => {
+    try {
+      await apiClient.post(`/scan-jobs/${jobId}/run`);
+      message.success('Job queued');
+      fetchJobs();
+    } catch (err: any) {
+      message.error(err?.response?.data?.detail || 'Queue failed');
+    }
+  };
+
+  const handleCancel = async (jobId: number) => {
+    try {
+      await apiClient.post(`/scan-jobs/${jobId}/cancel`);
+      message.success('Cancellation requested');
+      fetchJobs();
+    } catch (err: any) {
+      message.error(err?.response?.data?.detail || 'Cancel failed');
+    }
+  };
+
+  const pluginHints = useMemo(() => {
+    return pluginSpecs.reduce<Record<string, PluginSpec>>((acc, spec) => {
+      acc[spec.name] = spec;
+      return acc;
+    }, {});
+  }, [pluginSpecs]);
+
   return (
-    <Card title="Scan Jobs" extra={<Button onClick={() => setModalOpen(true)}>New Job</Button>}>
+    <Card
+      title="Scan Jobs"
+      extra={
+        <Space>
+          <Button onClick={fetchJobs}>Refresh</Button>
+          <Button type="primary" onClick={() => setModalOpen(true)}>
+            New Job
+          </Button>
+        </Space>
+      }
+    >
       <Table
         rowKey={(row) => String(row.id)}
         loading={loading}
@@ -64,9 +115,43 @@ export function ScanJobsPage() {
           {
             title: 'Plugins',
             dataIndex: 'plugins',
-            render: (plugins: string[]) => plugins?.map((p) => <Tag key={p}>{p}</Tag>)
+            render: (plugins: string[]) => (
+              <Space wrap>
+                {plugins?.map((p) => {
+                  const spec = pluginHints[p];
+                  const dangerous = spec?.dangerous_operations?.length;
+                  return (
+                    <Tooltip
+                      key={p}
+                      title={
+                        spec
+                          ? `${spec.description} | allowed: ${spec.allowed_operations.join(', ')} | dangerous: ${
+                              spec.dangerous_operations?.join(', ') || 'none'
+                            }`
+                          : undefined
+                      }
+                    >
+                      <Tag color={dangerous ? 'red' : 'blue'}>{p}</Tag>
+                    </Tooltip>
+                  );
+                })}
+              </Space>
+            )
           },
-          { title: 'Status', dataIndex: 'status' }
+          { title: 'Status', dataIndex: 'status', render: (status?: string) => <Tag>{status || 'n/a'}</Tag> },
+          {
+            title: 'Actions',
+            render: (_, row) => (
+              <Space>
+                <Button size="small" onClick={() => handleRun(row.id!)}>
+                  Queue
+                </Button>
+                <Button size="small" danger onClick={() => handleCancel(row.id!)}>
+                  Cancel
+                </Button>
+              </Space>
+            )
+          }
         ]}
       />
 

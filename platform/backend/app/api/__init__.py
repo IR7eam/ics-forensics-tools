@@ -10,6 +10,7 @@ from app.api import (
     evidence_links,
     reports,
     audit,
+    plugins,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "evidence_links",
     "reports",
     "audit",
+    "plugins",
 ]
