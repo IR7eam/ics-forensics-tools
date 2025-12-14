@@ -19,3 +19,11 @@ cd frontend && npm run dev -- --host
 
 frontend-build:
 cd frontend && npm run build
+
+.PHONY: compose-up compose-down
+
+compose-up:
+docker compose -f docker-compose.yml up --build
+
+compose-down:
+docker compose -f docker-compose.yml down

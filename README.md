@@ -46,6 +46,13 @@ npm run dev -- --host  # serves http://localhost:5173
 ```
 
 Authentication for the platform uses demo accounts: `admin/admin`, `analyst/analyst`, and `viewer/viewer`. Use the returned token from `POST /api/auth/token` as `Authorization: Bearer <token>` when calling the APIs.
+
+To run the same stack via Docker Compose:
+```bash
+cd platform
+docker compose up --build
+```
+Backend will listen on `http://localhost:8000`, frontend on `http://localhost:4173`.
 ## Usage
 
 ### General application arguments:

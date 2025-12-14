@@ -29,6 +29,17 @@ npm run dev -- --host
 The API will listen on `http://0.0.0.0:8000` with OpenAPI docs at `/docs`.
 The UI will be available at `http://127.0.0.1:5173` (configurable via Vite).
 
+## How to run (Docker Compose)
+```bash
+cd platform
+docker compose up --build
+```
+Services:
+- **backend**: FastAPI app on `http://localhost:8000` using a volume-backed SQLite database at `/data/ics_platform.db`.
+- **frontend**: built React UI served via `serve` at `http://localhost:4173` with API calls pointed to the backend service.
+
+Stop with `docker compose down`. The named `backend-data` volume preserves the SQLite database between runs.
+
 ## Authentication (developer-friendly RBAC)
 - Obtain a bearer token by calling `POST /api/auth/token` with OAuth2 form fields. Default demo accounts:
   - `admin` / `admin` (role: admin)
