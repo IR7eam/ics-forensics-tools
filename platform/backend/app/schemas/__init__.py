@@ -15,6 +15,7 @@ from app.schemas.scan_jobs import ScanJobCreate, ScanJobRead, ScanJobUpdate
 from app.schemas.security_events import SecurityEventCreate, SecurityEventRead
 from app.schemas.rules import RulePackCreate, RulePackRead, RulePackUpdate
 from app.schemas.plugins import PluginSpecRead
+from app.schemas.evidence_chain import EvidenceChainEntry, EvidenceChainResponse, EvidenceChainSummary
 
 __all__ = [
     "AssetCreate",
@@ -44,4 +45,7 @@ __all__ = [
     "RulePackCreate",
     "RulePackRead",
     "RulePackUpdate",
+    "EvidenceChainEntry",
+    "EvidenceChainSummary",
+    "EvidenceChainResponse",
 ]

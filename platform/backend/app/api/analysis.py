@@ -13,9 +13,11 @@ from app.schemas.baselines import (
     BaselineProfileRead,
     BaselineTrainRequest,
 )
+from app.schemas.evidence_chain import EvidenceChainResponse
 from app.services.audit import record_audit
 from app.services.anomaly import detect_anomalies
 from app.services.baseline import evaluate_metrics_against_baseline, train_baseline_profile
+from app.services.evidence_chain import build_evidence_chain
 from app.services.rules import RuleEngine, load_rules_from_file, load_rules_from_db
 from app.services.risk import summarize_attack_stages
 
@@ -139,3 +141,24 @@ def evaluate_baseline(
         },
     )
     return result
+
+
+@router.get("/evidence-chain", response_model=EvidenceChainResponse)
+def evidence_chain(
+    asset_id: int | None = None,
+    attack_stage: str | None = None,
+    session: Session = Depends(get_session),
+    current_user=Depends(require_role(Role.viewer)),
+):
+    chain = build_evidence_chain(session, asset_id=asset_id, attack_stage=attack_stage)
+    record_audit(
+        session,
+        actor=current_user.username,
+        action="evidence_chain_view",
+        resource=str(asset_id or "all"),
+        detail={
+            "attack_stage": attack_stage,
+            "total_entries": chain["summary"]["total_entries"],
+        },
+    )
+    return chain

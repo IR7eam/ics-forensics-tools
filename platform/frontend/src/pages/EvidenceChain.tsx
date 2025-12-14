@@ -1,13 +1,43 @@
 import { useEffect, useState } from 'react';
-import { Card, Table, Tag, message, Button, Space } from 'antd';
+import {
+  Card,
+  Table,
+  Tag,
+  message,
+  Button,
+  Space,
+  Timeline,
+  Row,
+  Col,
+  Statistic,
+  Form,
+  InputNumber,
+  Select
+} from 'antd';
+import { ClockCircleOutlined, LinkOutlined, WarningOutlined } from '@ant-design/icons';
 import { apiClient } from '../api/client';
 
-interface EvidenceLink {
-  id: number;
-  from_ref: string;
-  to_ref: string;
-  relation: string;
-  created_at?: string;
+interface EvidenceChainEntry {
+  ref: string;
+  type: string;
+  timestamp: string;
+  description: string;
+  attack_stage?: string | null;
+  risk_score?: number | null;
+  relation?: string | null;
+  protocol?: string | null;
+  asset_id?: number | null;
+}
+
+interface EvidenceChainSummary {
+  stage_counts: Record<string, number>;
+  max_risk: number;
+  total_entries: number;
+}
+
+interface EvidenceChainResponse {
+  entries: EvidenceChainEntry[];
+  summary: EvidenceChainSummary;
 }
 
 interface RawEvidence {
@@ -19,26 +49,50 @@ interface RawEvidence {
   created_at?: string;
 }
 
+const attackStages = [
+  'reconnaissance',
+  'intrusion',
+  'lateral_movement',
+  'control',
+  'impact',
+  'recovery'
+];
+
 export function EvidenceChainPage() {
-  const [links, setLinks] = useState<EvidenceLink[]>([]);
+  const [chain, setChain] = useState<EvidenceChainEntry[]>([]);
+  const [summary, setSummary] = useState<EvidenceChainSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [evidence, setEvidence] = useState<RawEvidence[]>([]);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [assetIdFilter, setAssetIdFilter] = useState<number | undefined>();
+  const [stageFilter, setStageFilter] = useState<string | undefined>();
 
-  useEffect(() => {
+  const fetchChain = async (params?: { asset_id?: number; attack_stage?: string }) => {
     setLoading(true);
-    apiClient
-      .get<EvidenceLink[]>('/evidence-links')
-      .then((res) => setLinks(res.data))
-      .catch(() => message.error('Failed to fetch evidence links'))
-      .finally(() => setLoading(false));
+    try {
+      const res = await apiClient.get<EvidenceChainResponse>('/analysis/evidence-chain', { params });
+      setChain(res.data.entries);
+      setSummary(res.data.summary);
+    } catch (err) {
+      console.error(err);
+      message.error('Failed to fetch evidence chain');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const fetchEvidence = () => {
     setEvidenceLoading(true);
     apiClient
       .get<RawEvidence[]>('/evidence')
       .then((res) => setEvidence(res.data))
       .catch(() => message.error('Failed to fetch evidence records'))
       .finally(() => setEvidenceLoading(false));
+  };
+
+  useEffect(() => {
+    fetchChain();
+    fetchEvidence();
   }, []);
 
   const downloadEvidence = async (id: number) => {
@@ -60,24 +114,101 @@ export function EvidenceChainPage() {
     }
   };
 
+  const renderTimelineIcon = (type: string) => {
+    if (type === 'security_event') return <WarningOutlined />;
+    if (type === 'link') return <LinkOutlined />;
+    return <ClockCircleOutlined />;
+  };
+
+  const renderTimelineColor = (type: string) => {
+    if (type === 'security_event') return 'red';
+    if (type === 'raw_evidence') return 'blue';
+    if (type === 'observation') return 'green';
+    return 'gray';
+  };
+
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-      <Card title="Evidence Chain">
-        <Table
-          rowKey={(row) => String(row.id)}
-          loading={loading}
-          dataSource={links}
-          columns={[
-            { title: 'ID', dataIndex: 'id', width: 80 },
-            { title: 'From', dataIndex: 'from_ref' },
-            { title: 'To', dataIndex: 'to_ref' },
-            {
-              title: 'Relation',
-              dataIndex: 'relation',
-              render: (value: string) => <Tag color="purple">{value}</Tag>
-            },
-            { title: 'Created At', dataIndex: 'created_at' }
-          ]}
+      <Card
+        title="Evidence Chain"
+        extra={
+          <Space>
+            <Form
+              layout="inline"
+              onFinish={() => fetchChain({ asset_id: assetIdFilter, attack_stage: stageFilter })}
+            >
+              <Form.Item label="Asset ID">
+                <InputNumber
+                  min={1}
+                  value={assetIdFilter}
+                  placeholder="Any"
+                  onChange={(value) => setAssetIdFilter(value ?? undefined)}
+                />
+              </Form.Item>
+              <Form.Item label="Stage">
+                <Select
+                  allowClear
+                  style={{ width: 180 }}
+                  placeholder="Any"
+                  value={stageFilter}
+                  onChange={(value) => setStageFilter(value)}
+                  options={attackStages.map((stage) => ({ label: stage, value: stage }))}
+                />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                Apply
+              </Button>
+              <Button
+                onClick={() => {
+                  setAssetIdFilter(undefined);
+                  setStageFilter(undefined);
+                  fetchChain({});
+                }}
+                disabled={loading}
+              >
+                Reset
+              </Button>
+            </Form>
+          </Space>
+        }
+      >
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Statistic title="Entries" value={summary?.total_entries ?? 0} />
+          </Col>
+          <Col span={6}>
+            <Statistic title="Max Risk" value={summary?.max_risk ?? 0} precision={3} />
+          </Col>
+          <Col span={12}>
+            <Space wrap>
+              {summary &&
+                Object.entries(summary.stage_counts).map(([stage, count]) => (
+                  <Tag key={stage} color="purple">
+                    {stage}: {count}
+                  </Tag>
+                ))}
+            </Space>
+          </Col>
+        </Row>
+
+        <Timeline
+          pending={loading ? 'Loading...' : undefined}
+          items={chain.map((entry) => ({
+            color: renderTimelineColor(entry.type),
+            dot: renderTimelineIcon(entry.type),
+            children: (
+              <div>
+                <div style={{ fontWeight: 600 }}>{entry.description}</div>
+                <Space wrap size="small">
+                  <Tag>{entry.type}</Tag>
+                  {entry.protocol && <Tag color="blue">{entry.protocol}</Tag>}
+                  {entry.attack_stage && <Tag color="volcano">{entry.attack_stage}</Tag>}
+                  {entry.risk_score != null && <Tag color="magenta">risk {entry.risk_score.toFixed(3)}</Tag>}
+                  <Tag>{new Date(entry.timestamp).toLocaleString()}</Tag>
+                </Space>
+              </div>
+            )
+          }))}
         />
       </Card>
 

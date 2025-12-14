@@ -48,6 +48,10 @@ requirements and highlights what is already implemented versus what remains.
   dependencies are installed, with automatic audited fallback to simulation on
   missing deps or connection failures. IEC104 now performs a conservative
   StartDT/TestFR handshake and persists captured APDUs as evidence.
+- **Evidence-chain timeline**: `/analysis/evidence-chain` aggregates
+  observations, events, raw evidence, and links into a time-ordered set with
+  attack-stage counts and max risk summaries, and the UI renders a filterable
+  timeline plus evidence downloads.
 
 ## Gaps toward the full requirements
 - **Real protocol collectors**: Implement deeper parsing and coverage for
@@ -68,6 +72,11 @@ requirements and highlights what is already implemented versus what remains.
   (Modbus, OPC UA, SNMP, SSH, IEC104) plus end-to-end API/UI smoke tests.
 - **Documentation**: Expanded operator guide (safety defaults, opt-in actions,
   report templates), and sample scan configs (targets.yaml/ips.csv).
+
+**Remaining workload estimate**: ~3–4 development iterations are expected to
+deliver fuller live-collector parsing/fingerprints, a production-grade worker
+layer, simulator-backed integration tests, and final operator-facing docs and
+report templates.
 
 ## Next milestone (proposed)
 - Implement a plugin runner abstraction that can call real collectors (keeping

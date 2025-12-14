@@ -65,6 +65,7 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Baseline UX and attack-stage awareness**: Settings now offers baseline train/evaluate controls, and the dashboard visualizes attack-stage coverage using `/analysis/attack-stages` so analysts can track drift and stage trends.
 - **Rule-pack management**: Analysts can upload/list/toggle rule packs via `/api/rules` with audit coverage and test them in the Settings UI to validate detection logic.
 - **IEC104 handshake evidence**: The real collector now issues only StartDT/TestFR frames, records APDUs as raw evidence with SHA-256 hashes, and remains read-only by default.
+- **Evidence-chain timelines**: `/api/analysis/evidence-chain` assembles observations, security events, raw evidence, and links into a time-ordered view with stage/risk summaries, and the UI visualizes the chain with filters plus evidence downloads.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.
@@ -73,6 +74,8 @@ The SQLModel tables mirror the normalized evidence schema:
 4. **Evidence graph & reporting**: evidence linkage APIs, attack-stage mapping, and multi-format report generation.
 5. **Frontend**: React-based dashboard consuming the APIs (assets, jobs, events, evidence chains, reports, settings).
 6. **Packaging & tests**: docker-compose, integration fixtures (simulated protocol servers), unit tests for rule engine/anomaly detection, and documentation updates.
+
+**Remaining workload estimate**: ~3–4 additional development iterations should cover richer live collectors (with parsing and fingerprint enrichment), a sturdier worker/queue layer, integration test harnesses against protocol simulators, and final operator documentation/report templates.
 
 Each milestone will preserve the safety constraints (read-only defaults, explicit opt-in for side-effecting operations) and extend the schema where necessary to capture audit details.
 
@@ -86,6 +89,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `POST /api/analysis/baseline/train` — compute and store per-asset/per-protocol baselines from stored observations.
 - `POST /api/analysis/baseline/evaluate` — compare live metrics to a baseline, optionally emitting `SecurityEvent` rows.
 - `GET /api/analysis/attack-stages` — aggregate stored security events by ICS attack stage with max risk per stage for timeline views.
+- `GET /api/analysis/evidence-chain` — return a time-ordered chain of observations, events, evidence, and links with stage/risk summaries (viewable by viewers+).
 - `POST /api/scan-jobs/{id}/run` — queue a scan job and execute it in the background with audit logging and simulated observations/evidence.
 - `POST /api/scan-jobs/{id}/cancel` — request cancellation; the queued/active job marks itself cancelled and records an audit entry.
 - `GET /api/evidence/{id}/download` — stream stored evidence bytes from `ICS_EVIDENCE_DIR` (default `./evidence`) and audit the download.
