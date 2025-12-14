@@ -3,13 +3,15 @@ from pathlib import Path
 from typing import Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.security import Role, require_role
 from app.db.session import get_session
+from app.models.core import SecurityEvent
 from app.services.audit import record_audit
 from app.services.anomaly import detect_anomalies
 from app.services.rules import RuleEngine, load_rules_from_file
+from app.services.risk import summarize_attack_stages
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -52,3 +54,17 @@ def run_anomaly_detection(
         detail={"metric_keys": list(metrics.keys())},
     )
     return result
+
+
+@router.get("/attack-stages")
+def summarize_stages(session: Session = Depends(get_session), current_user=Depends(require_role(Role.viewer))):
+    events = session.exec(select(SecurityEvent)).all()
+    summary = summarize_attack_stages([e.dict() for e in events])
+    record_audit(
+        session,
+        actor=current_user.username,
+        action="attack_stage_summary",
+        resource="events",
+        detail={"stages": list(summary.keys())},
+    )
+    return summary

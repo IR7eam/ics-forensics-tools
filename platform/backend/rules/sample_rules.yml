@@ -3,6 +3,12 @@ rules:
     name: Block unexpected Modbus write
     description: Flag observations that include Modbus write function codes (permitted only when explicitly enabled).
     severity: high
+    confidence: 0.9
+    attack_stage: control
+    impact: integrity
+    recommendations:
+      - Verify change controls and confirm no write operations are scheduled on this asset.
+      - Re-run the scan with write operations disabled or isolated in a lab.
     conditions:
       - field: protocol
         op: eq
@@ -14,6 +20,11 @@ rules:
     name: Insecure OPC UA endpoint
     description: OPC UA endpoint exposing None or anonymous security policy.
     severity: medium
+    attack_stage: reconnaissance
+    impact: confidentiality
+    recommendations:
+      - Require signed or encrypted security modes and disable anonymous access.
+      - Rotate server certificates if they have been exposed via anonymous endpoints.
     conditions:
       - field: protocol
         op: eq

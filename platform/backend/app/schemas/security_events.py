@@ -9,6 +9,11 @@ class SecurityEventBase(BaseModel):
     severity: str = "info"
     confidence: float = 0.5
     impact: Optional[str] = None
+    attack_stage: Optional[str] = None
+    category: Optional[str] = None
+    risk_score: float = 0.0
+    tags: List[str] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
     description: str
     evidence_refs: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)

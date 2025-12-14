@@ -37,7 +37,7 @@ def _render_html(title: str, assets: Iterable[Asset], events: Iterable[SecurityE
         for a in assets
     )
     event_rows = "".join(
-        f"<tr><td>{e.id}</td><td>{e.asset_id or ''}</td><td>{e.severity}</td><td>{e.description}</td></tr>"
+        f"<tr><td>{e.id}</td><td>{e.asset_id or ''}</td><td>{e.severity}</td><td>{e.attack_stage or 'n/a'}</td><td>{e.risk_score}</td><td>{e.description}</td></tr>"
         for e in events
     )
     observation_rows = "".join(
@@ -59,7 +59,7 @@ def _render_html(title: str, assets: Iterable[Asset], events: Iterable[SecurityE
 </table>
 <h2>Security Events</h2>
 <table border='1' cellspacing='0' cellpadding='4'>
-<tr><th>ID</th><th>Asset</th><th>Severity</th><th>Description</th></tr>
+<tr><th>ID</th><th>Asset</th><th>Severity</th><th>Stage</th><th>Risk</th><th>Description</th></tr>
 {event_rows}
 </table>
 <h2>Observations</h2>
@@ -98,7 +98,10 @@ def _write_pdf(path: Path, title: str, assets: Iterable[Asset], events: Iterable
     y -= 20
     c.setFont("Helvetica", 10)
     for event in events:
-        line = f"[{event.id}] asset {event.asset_id or 'n/a'} severity={event.severity} desc={event.description}"[:150]
+        line = (
+            f"[{event.id}] asset {event.asset_id or 'n/a'} severity={event.severity}"
+            f" stage={event.attack_stage or 'n/a'} risk={event.risk_score} desc={event.description}"
+        )[:150]
         c.drawString(50, y, line)
         y -= 15
         if y < 80:
@@ -117,7 +120,9 @@ def _write_docx(path: Path, title: str, assets: Iterable[Asset], events: Iterabl
         doc.add_paragraph(f"ID {asset.id} IP {asset.ip} type {asset.device_type or 'unknown'} protocols {', '.join(asset.protocols)}")
     doc.add_heading("Security Events", level=1)
     for event in events:
-        doc.add_paragraph(f"[{event.severity}] asset {event.asset_id or 'n/a'}: {event.description}")
+        doc.add_paragraph(
+            f"[{event.severity}] stage={event.attack_stage or 'n/a'} risk={event.risk_score} asset {event.asset_id or 'n/a'}: {event.description}"
+        )
     doc.add_heading("Observations", level=1)
     for obs in observations:
         doc.add_paragraph(f"{obs.protocol} @ {obs.timestamp.isoformat()} for asset {obs.asset_id or 'n/a'}")

@@ -79,6 +79,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `POST /api/reports/generate` — generate HTML/PDF/DOCX reports summarizing assets/events/observations within a scope.
 - `POST /api/analysis/rules/evaluate` — evaluate YAML rules against an observation-like payload.
 - `POST /api/analysis/anomaly` — run z-score and IsolationForest anomaly detection over metric arrays.
+- `GET /api/analysis/attack-stages` — aggregate stored security events by ICS attack stage with max risk per stage for timeline views.
 - `POST /api/scan-jobs/{id}/run` — queue a scan job and execute it in the background with audit logging and simulated observations/evidence.
 - `POST /api/scan-jobs/{id}/cancel` — request cancellation; the queued/active job marks itself cancelled and records an audit entry.
 - `GET /api/plugins` — enumerate plugin specs (protocol, allowed vs. dangerous operations, device types) for UI validation and operator review.

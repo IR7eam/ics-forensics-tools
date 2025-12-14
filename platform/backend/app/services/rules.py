@@ -3,6 +3,8 @@ from typing import Any, Dict, List
 
 import yaml
 
+from app.services.risk import compute_risk_score
+
 
 class RuleEngine:
     """Simple rule matcher that evaluates condition expressions on observation dicts."""
@@ -26,12 +28,22 @@ class RuleEngine:
         for rule in self.rules:
             conditions = rule.get("conditions", [])
             if all(self._evaluate_condition(payload, cond) for cond in conditions):
+                severity = rule.get("severity", "info")
+                confidence = float(rule.get("confidence", 0.5))
+                impact = rule.get("impact")
+                risk_score = rule.get("risk_score") or compute_risk_score(severity, confidence, impact)
                 matched.append(
                     {
                         "id": rule.get("id"),
                         "name": rule.get("name"),
                         "description": rule.get("description"),
-                        "severity": rule.get("severity", "info"),
+                        "severity": severity,
+                        "confidence": confidence,
+                        "impact": impact,
+                        "attack_stage": rule.get("attack_stage"),
+                        "category": rule.get("category"),
+                        "risk_score": risk_score,
+                        "recommendations": rule.get("recommendations", []),
                         "evidence": payload,
                     }
                 )

@@ -9,7 +9,10 @@ def test_rule_engine_matches_write_block():
     engine = RuleEngine(rules)
     payload = {"protocol": "modbus", "parsed_data": {"function_code": 5}}
     matches = engine.evaluate(payload)
-    assert any(m["id"] == "modbus-read-only" for m in matches)
+    match = next((m for m in matches if m["id"] == "modbus-read-only"), None)
+    assert match is not None
+    assert match["attack_stage"] == "control"
+    assert match["risk_score"] > 0.5
 
 
 def test_rule_engine_skips_read():
