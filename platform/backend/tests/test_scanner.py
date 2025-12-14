@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from sqlmodel import SQLModel, Session, create_engine, select
 
 from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
@@ -42,6 +44,9 @@ def test_run_scan_job_creates_observations_and_audit():
         audits = session.exec(select(AuditLog)).all()
         assert any(a.action == "scan_job_completed" for a in audits)
         assert len(audits) >= 3
+
+        for ev in evidence:
+            assert Path(ev.storage_path).exists()
 
 
 def test_side_effect_operations_are_denied():

@@ -85,6 +85,7 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - `GET /api/analysis/attack-stages` — aggregate stored security events by ICS attack stage with max risk per stage for timeline views.
 - `POST /api/scan-jobs/{id}/run` — queue a scan job and execute it in the background with audit logging and simulated observations/evidence.
 - `POST /api/scan-jobs/{id}/cancel` — request cancellation; the queued/active job marks itself cancelled and records an audit entry.
+- `GET /api/evidence/{id}/download` — stream stored evidence bytes from `ICS_EVIDENCE_DIR` (default `./evidence`) and audit the download.
 - `GET /api/plugins` — enumerate plugin specs (protocol, allowed vs. dangerous operations, device types) for UI validation and operator review.
 - `/api/audit` — list or insert audit trail entries.
 

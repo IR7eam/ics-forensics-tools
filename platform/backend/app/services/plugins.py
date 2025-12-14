@@ -10,7 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+from app.core.config import get_settings
 
 
 @dataclass
@@ -103,7 +106,21 @@ def validate_operations(spec: PluginSpec, requested_ops: List[str] | None, allow
     return requested_ops
 
 
-def simulate_plugin_collection(spec: PluginSpec, target: str, parameters: Dict) -> Tuple[dict, dict]:
+def _write_evidence_bytes(content: bytes, spec: PluginSpec, target: str, evidence_dir: Path) -> Path:
+    """Persist evidence bytes into a structured evidence directory."""
+
+    safe_proto = spec.protocol.replace("/", "_")
+    safe_target = target.replace(":", "_").replace("/", "_")
+    target_dir = evidence_dir / safe_proto / safe_target
+    target_dir.mkdir(parents=True, exist_ok=True)
+    path = target_dir / f"{datetime.utcnow().isoformat()}.bin"
+    path.write_bytes(content)
+    return path
+
+
+def simulate_plugin_collection(
+    spec: PluginSpec, target: str, parameters: Dict, evidence_dir: Path | None = None
+) -> Tuple[dict, dict]:
     """Create observation/evidence payloads for a simulated plugin run.
 
     The payloads mirror Observation/RawEvidence fields so the scanner can persist
@@ -114,7 +131,9 @@ def simulate_plugin_collection(spec: PluginSpec, target: str, parameters: Dict) 
     timestamp = datetime.utcnow()
     raw_payload = f"{spec.name}:{target}:{timestamp.isoformat()}".encode()
     evidence_hash = "sha256:" + sha256(raw_payload).hexdigest()
-    storage_path = f"simulated://{spec.protocol}/{target}/{timestamp.isoformat()}"
+    evidence_root = Path(evidence_dir or get_settings().evidence_dir)
+    evidence_root.mkdir(parents=True, exist_ok=True)
+    storage_path = _write_evidence_bytes(raw_payload, spec, target, evidence_root)
 
     requested_ops = parameters.get("operations")
     allowed_ops = requested_ops or spec.allowed_operations
@@ -136,12 +155,12 @@ def simulate_plugin_collection(spec: PluginSpec, target: str, parameters: Dict) 
             "latency_ms": 40 + len(target),
             "default_port": spec.default_port,
         },
-        "raw_refs": [storage_path],
+        "raw_refs": [str(storage_path)],
     }
 
     evidence_payload = {
         "hash": evidence_hash,
-        "storage_path": storage_path,
+        "storage_path": str(storage_path),
         "context": {
             "plugin": spec.name,
             "protocol": spec.protocol,

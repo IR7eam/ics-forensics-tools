@@ -16,10 +16,15 @@ from app.api import (
     audit,
     plugins,
 )
+from pathlib import Path
+
 from app.core.config import get_settings
 from app.db.session import init_db
 
 settings = get_settings()
+
+Path(settings.report_dir).mkdir(parents=True, exist_ok=True)
+Path(settings.evidence_dir).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title=settings.app_name)
 

@@ -1,6 +1,9 @@
 from typing import List
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
 from app.core.security import Role, require_role
@@ -39,3 +42,25 @@ def get_evidence(evidence_id: int, session: Session = Depends(get_session), curr
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
     return evidence
+
+
+@router.get("/{evidence_id}/download")
+def download_evidence(
+    evidence_id: int, session: Session = Depends(get_session), current_user=Depends(require_role(Role.viewer))
+):
+    evidence = session.get(RawEvidence, evidence_id)
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+
+    path = Path(evidence.storage_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Evidence content missing")
+
+    record_audit(
+        session,
+        actor=current_user.username,
+        action="evidence_download",
+        resource=str(evidence_id),
+        detail={"observation_id": evidence.observation_id, "path": evidence.storage_path},
+    )
+    return FileResponse(path, media_type="application/octet-stream", filename=path.name)

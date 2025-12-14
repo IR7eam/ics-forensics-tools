@@ -5,6 +5,7 @@ timeout/limits so the platform API can exercise the full job lifecycle.
 """
 
 from datetime import datetime
+from pathlib import Path
 from queue import Empty, Queue
 from threading import Lock, Thread
 from time import sleep
@@ -14,6 +15,7 @@ from sqlmodel import Session
 
 from app.db.session import engine
 from app.models.core import Observation, RawEvidence, ScanJob
+from app.core.config import get_settings
 from app.services.audit import record_audit
 from app.services.plugins import (
     PLUGIN_REGISTRY,
@@ -30,6 +32,12 @@ _cancellations = set()
 
 def _default_session_factory():
     return Session(engine)
+
+
+def _default_evidence_dir():
+    return get_settings().evidence_dir
+
+
 def run_scan_job(
     job_id: int,
     actor: str,
@@ -37,6 +45,7 @@ def run_scan_job(
     session_factory: Callable[[], Session] = _default_session_factory,
     targets: Optional[Iterable[str]] = None,
     cancelled: Optional[Callable[[], bool]] = None,
+    evidence_dir: Optional[str] = None,
 ) -> None:
     sleep_interval = 1.0 / rate_limit_rps if rate_limit_rps > 0 else 0
     with session_factory() as session:
@@ -85,7 +94,7 @@ def run_scan_job(
                     params = dict(current_job.parameters)
                     params["operations"] = allowed_ops
                     observation_payload, evidence_payload = simulate_plugin_collection(
-                        spec, target, params
+                        spec, target, params, evidence_dir=Path(evidence_dir or _default_evidence_dir())
                     )
 
                     observation = Observation(**observation_payload)
