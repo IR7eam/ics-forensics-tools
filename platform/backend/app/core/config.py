@@ -1,0 +1,37 @@
+from functools import lru_cache
+from typing import List
+
+from pydantic import BaseSettings, AnyUrl
+
+
+class Settings(BaseSettings):
+    app_name: str = "ICS Forensics Platform"
+    debug: bool = False
+    database_url: str = "sqlite:///./ics_platform.db"
+    api_prefix: str = "/api"
+    allowed_hosts: List[str] = ["*"]
+    jwt_secret: str = "change-me"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 12
+    report_dir: str = "./reports"
+    evidence_dir: str = "./evidence"
+    use_simulated_plugins: bool = True
+    default_connect_timeout: float = 3.0
+    default_read_timeout: float = 5.0
+    default_rate_limit_rps: float = 1.0
+    max_retry_attempts: int = 1
+    retry_backoff_seconds: float = 0.5
+    demo_users: List[str] = [
+        "admin:admin:admin",
+        "analyst:analyst:analyst",
+        "viewer:viewer:viewer",
+    ]
+
+    class Config:
+        env_prefix = "ICS_"
+        env_file = ".env"
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()

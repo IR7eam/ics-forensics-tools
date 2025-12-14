@@ -1,0 +1,34 @@
+rules:
+  - id: modbus-read-only
+    name: Block unexpected Modbus write
+    description: Flag observations that include Modbus write function codes (permitted only when explicitly enabled).
+    severity: high
+    confidence: 0.9
+    attack_stage: control
+    impact: integrity
+    recommendations:
+      - Verify change controls and confirm no write operations are scheduled on this asset.
+      - Re-run the scan with write operations disabled or isolated in a lab.
+    conditions:
+      - field: protocol
+        op: eq
+        value: modbus
+      - field: parsed_data.function_code
+        op: in
+        value: [5, 6, 15, 16]
+  - id: opcua-security
+    name: Insecure OPC UA endpoint
+    description: OPC UA endpoint exposing None or anonymous security policy.
+    severity: medium
+    attack_stage: reconnaissance
+    impact: confidentiality
+    recommendations:
+      - Require signed or encrypted security modes and disable anonymous access.
+      - Rotate server certificates if they have been exposed via anonymous endpoints.
+    conditions:
+      - field: protocol
+        op: eq
+        value: opcua
+      - field: parsed_data.security_mode
+        op: eq
+        value: None

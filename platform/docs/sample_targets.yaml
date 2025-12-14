@@ -1,0 +1,23 @@
+# Example targets for queued scan jobs (read-only defaults)
+# Each item maps to scan job fields: name, target_range, plugins
+- name: demo-modbus
+  target_range: ["192.0.2.10"]
+  plugins: ["modbus"]
+  notes: "FC3/FC4 only; conservative range"
+- name: opcua-edge
+  target_range: ["192.0.2.20:4840"]
+  plugins: ["opcua"]
+  notes: "Anonymous endpoint discovery + browse"
+- name: network-safety
+  target_range: ["192.0.2.30"]
+  plugins: ["snmp", "ssh"]
+  notes: "SNMP GET/WALK and SSH banner/whitelisted commands"
+- name: substation-link
+  target_range: ["198.51.100.11"]
+  plugins: ["iec104"]
+  notes: "StartDT/TestFR only; total call disabled"
+
+- name: s7-cip-combo
+  target_range: ["192.0.2.40"]
+  plugins: ["s7comm", "cip"]
+  notes: "S7 SZL read + CIP ListIdentity; read-only"

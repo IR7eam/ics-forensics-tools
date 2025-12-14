@@ -94,7 +94,7 @@ ipython_config.py
 #Pipfile.lock
 
 # poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control,
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
@@ -165,4 +165,10 @@ cython_debug/
 logs/
 output/
 
+# Frontend build artifacts
+platform/frontend/node_modules/
+platform/frontend/dist/
+platform/frontend/.vite/
+
 config.json
+evidence/
