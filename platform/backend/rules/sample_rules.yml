@@ -1,0 +1,23 @@
+rules:
+  - id: modbus-read-only
+    name: Block unexpected Modbus write
+    description: Flag observations that include Modbus write function codes (permitted only when explicitly enabled).
+    severity: high
+    conditions:
+      - field: protocol
+        op: eq
+        value: modbus
+      - field: parsed_data.function_code
+        op: in
+        value: [5, 6, 15, 16]
+  - id: opcua-security
+    name: Insecure OPC UA endpoint
+    description: OPC UA endpoint exposing None or anonymous security policy.
+    severity: medium
+    conditions:
+      - field: protocol
+        op: eq
+        value: opcua
+      - field: parsed_data.security_mode
+        op: eq
+        value: None

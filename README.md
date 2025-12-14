@@ -23,9 +23,27 @@ git clone https://github.com/microsoft/ics-forensics-tools.git
 
 - Install python requirements
 
-    ``` 
+    ```
     pip install -r requirements.txt
     ```
+
+### Platform (backend + frontend) quickstart
+
+An in-progress web platform lives under `platform/` with a FastAPI backend and a Vite/React frontend. To try it locally:
+
+```bash
+cd platform
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+make init-db
+make backend  # serves http://localhost:8000 with /docs
+
+# in another terminal
+cd platform/frontend
+npm install
+npm run dev -- --host  # serves http://localhost:5173
+```
 ## Usage
 
 ### General application arguments:
@@ -181,3 +199,8 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## ICS Forensics Platform (staged)
+An extended platform is being added under `platform/` with FastAPI backend scaffolding and normalized data models for assets, scan jobs, observations, evidence, and reporting. See `PLATFORM_README.md` for current scope and how to run the backend skeleton.
+
+New endpoints now include evidence-link management (`/api/evidence-links`), report generation (`/api/reports/generate`) producing HTML, PDF, or DOCX summaries of assets/events/observations for downstream UI and audit/export flows, a background scan trigger (`POST /api/scan-jobs/{id}/run`), and audit logging (`/api/audit`).

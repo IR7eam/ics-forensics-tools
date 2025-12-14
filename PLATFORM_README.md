@@ -1,0 +1,83 @@
+# ICS Forensics Platform (staged delivery)
+
+This document describes the staged roadmap for building the requested end-to-end ICS forensics platform on top of the existing tooling. This initial drop focuses on creating a backend scaffold with core domain models and REST entry points so we can iterate safely.
+
+See `platform/docs/ROADMAP.md` for a detailed gap analysis and next-milestone checklist.
+
+## Current scope (Milestone 1)
+- Adds a FastAPI-based backend skeleton under `platform/backend` with SQLModel data models for the platform-wide normalized entities (Asset, ScanJob, Observation, RawEvidence, SecurityEvent, EvidenceLink, Report, BaselineProfile).
+- Provides JWT-backed authentication helper and simple token issuance endpoint (username/password placeholder) to enable role-aware APIs later.
+- Exposes CRUD APIs for Assets, Scan Jobs, Observations, Evidence, Baselines, Security Events, and Evidence Links to unblock front-end wiring and initial data ingestion.
+- Adds an audit log surface (`/api/audit`) and a background scan trigger (`POST /api/scan-jobs/{id}/run`) that simulates read-only collections while recording per-target audit entries.
+- Adds analysis helpers: rule evaluation (YAML-driven) and anomaly detection (z-score + Isolation Forest) via `/api/analysis` endpoints.
+- Introduces report generation (HTML/PDF/DOCX) via `/api/reports/generate`, storing paths in the `Report` table for download/preview.
+- Includes a `Makefile` to start the backend (`make backend`), initialize the database (`make init-db`), or run backend unit tests (`make test-backend`).
+
+## How to run (local)
+```bash
+cd platform
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+make init-db
+make backend
+# in a second terminal for the UI
+cd platform/frontend
+npm install
+npm run dev -- --host
+```
+The API will listen on `http://0.0.0.0:8000` with OpenAPI docs at `/docs`.
+The UI will be available at `http://127.0.0.1:5173` (configurable via Vite).
+
+## Authentication (developer-friendly placeholder)
+- Obtain a bearer token by calling `POST /api/auth/token` with any `username`/`password` via OAuth2 form fields. The backend returns a JWT signed with `ICS_JWT_SECRET` (defaults to `change-me`).
+- Use the returned `access_token` as `Authorization: Bearer <token>` to access protected endpoints.
+- Roles are stored in the token payload and default to `admin` for now; future milestones will enforce RBAC and audit logging.
+
+## Data model overview
+The SQLModel tables mirror the normalized evidence schema:
+- **Asset**: ip/hostname, device_type, vendor, model, serial, firmware, supported protocols, tags, timestamps.
+- **ScanJob**: initiated_by, targets, plugin list, parameters snapshot, status lifecycle.
+- **Observation**: per-asset protocol observation with parsed data, metrics, raw references.
+- **RawEvidence**: binary/text pointers with hash and context for integrity.
+- **SecurityEvent**: rule/anomaly hits with severity, confidence, impact, evidence references.
+- **EvidenceLink**: links between evidence to construct timelines/graphs.
+- **Report**: generated files and parameters (HTML/PDF/DOCX in later milestones).
+
+## Progress update
+- **Protocol registry & simulation**: Added a protocol-aware plugin registry (Modbus, OPC UA, IEC104, SNMP, SSH, and generic) with read-only operation lists and device_type hints. The scan runner now emits per-plugin observations, SHA-256–hashed raw evidence, and protocol-aware audit details.
+- **Roadmap tracking**: Documented current coverage, gaps, and upcoming milestones in `platform/docs/ROADMAP.md` to clarify what remains for full delivery.
+
+## Next milestones (suggested breakdown)
+1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.
+2. **Task orchestration & audit**: background workers, per-request audit logs, role-based permissions, and job state machine.
+3. **Analysis layer**: rule engine, baseline modeling, anomaly detection utilities producing `SecurityEvent` rows.
+4. **Evidence graph & reporting**: evidence linkage APIs, attack-stage mapping, and multi-format report generation.
+5. **Frontend**: React-based dashboard consuming the APIs (assets, jobs, events, evidence chains, reports, settings).
+6. **Packaging & tests**: docker-compose, integration fixtures (simulated protocol servers), unit tests for rule engine/anomaly detection, and documentation updates.
+
+Each milestone will preserve the safety constraints (read-only defaults, explicit opt-in for side-effecting operations) and extend the schema where necessary to capture audit details.
+
+## Backend API surface (early draft)
+- `POST /api/auth/token` — obtain a JWT.
+- CRUD under `/api/assets`, `/api/scan-jobs`, `/api/observations`, `/api/evidence`, `/api/events`, `/api/baselines`, `/api/evidence-links`.
+- `POST /api/reports/generate` — generate HTML/PDF/DOCX reports summarizing assets/events/observations within a scope.
+- `POST /api/analysis/rules/evaluate` — evaluate YAML rules against an observation-like payload.
+- `POST /api/analysis/anomaly` — run z-score and IsolationForest anomaly detection over metric arrays.
+- `POST /api/scan-jobs/{id}/run` — queue a scan job and execute it in the background with audit logging and simulated observations/evidence.
+- `/api/audit` — list or insert audit trail entries.
+
+## Next-phase plan (Milestone 2 goals)
+- **Collector integration**: wire existing forensic plugins into the platform scan pipeline, and add read-only collectors for IEC104/OPC UA/SNMP/SSH with rate-limit/timeout defaults mapped into `Observation` and `RawEvidence` records.
+- **Background execution & audit**: add a job runner (e.g., FastAPI BackgroundTasks or Celery-ready hooks) with per-request audit logs and RBAC checks on sensitive endpoints.
+- **Evidence delivery & UI hooks**: expose report download endpoints, attach evidence-link traversal helpers, and start the frontend scaffold (React + AntD) with pages for dashboard, assets, scan jobs, events, and report preview.
+- **Frontend skeleton (delivered in this step)**: a Vite + React + Ant Design single-page app with navigation, JWT login helper, and pages for dashboard, assets, scan jobs, events, evidence chains, reports, and settings.
+
+## Testing
+```bash
+cd platform
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+make test-backend
+```
