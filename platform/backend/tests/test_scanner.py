@@ -2,7 +2,7 @@ from pathlib import Path
 
 from sqlmodel import SQLModel, Session, create_engine, select
 
-from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
+from app.models.core import Asset, AuditLog, Observation, RawEvidence, ScanJob
 from app.core.config import get_settings
 from app.services import scanner
 from app.services.scanner import cancel_scan_job, run_scan_job
@@ -118,6 +118,40 @@ def test_cancel_scan_job_marks_state_and_halts_collection():
         evidence = session.exec(select(RawEvidence)).all()
         assert evidence == []
     scanner._cancellations.clear()
+
+
+def test_run_scan_job_links_assets_and_updates_protocols():
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        asset = Asset(ip="10.0.0.1", hostname="plc1")
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+
+        job = ScanJob(
+            name="enrich",
+            initiated_by="tester",
+            target_range=["10.0.0.1", "10.0.0.2"],
+            plugins=["modbus", "snmp"],
+            parameters={},
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        job_id = job.id
+        asset_id = asset.id
+
+    run_scan_job(job_id, actor="tester", rate_limit_rps=0, session_factory=lambda: Session(engine))
+
+    with Session(engine) as session:
+        observations = session.exec(select(Observation)).all()
+        assert any(obs.asset_id == asset_id for obs in observations)
+
+        updated_asset = session.get(Asset, asset_id)
+        assert updated_asset.device_type == "plc"
+        assert set(updated_asset.protocols) >= {"modbus/tcp", "snmp"}
 
 
 def test_scan_job_retries_on_timeout(monkeypatch):

@@ -66,6 +66,7 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Rule-pack management**: Analysts can upload/list/toggle rule packs via `/api/rules` with audit coverage and test them in the Settings UI to validate detection logic.
 - **IEC104 handshake evidence**: The real collector now issues only StartDT/TestFR frames, records APDUs as raw evidence with SHA-256 hashes, and remains read-only by default.
 - **Evidence-chain timelines**: `/api/analysis/evidence-chain` assembles observations, security events, raw evidence, and links into a time-ordered view with stage/risk summaries, and the UI visualizes the chain with filters plus evidence downloads.
+- **Asset enrichment from scans**: When scan targets match known asset IPs, observations are automatically linked and the asset's device_type/protocol list are updated using plugin metadata to keep inventories fresh without manual edits.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.

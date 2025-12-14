@@ -14,7 +14,9 @@ from typing import Callable, Iterable, Optional
 from sqlmodel import Session
 
 from app.db.session import engine
-from app.models.core import Observation, RawEvidence, ScanJob
+from sqlmodel import select
+
+from app.models.core import Asset, Observation, RawEvidence, ScanJob
 from app.core.config import get_settings
 from app.services.audit import record_audit
 from app.services.collectors import (
@@ -67,6 +69,12 @@ def run_scan_job(
         session.commit()
         target_list = list(targets or job.target_range)
 
+        target_hosts = [t.split(":", 1)[0] for t in target_list]
+        asset_map = {
+            asset.ip: asset.id
+            for asset in session.exec(select(Asset).where(Asset.ip.in_(target_hosts))).all()
+        }
+
     sleep_interval = 1.0 / job.rate_limit_rps if job.rate_limit_rps > 0 else 0
     settings = get_settings()
 
@@ -92,6 +100,11 @@ def run_scan_job(
             current_job = inner.get(ScanJob, job_id)
             if not current_job:
                 return
+
+            target_host = target.split(":", 1)[0]
+            asset = None
+            if target_host in asset_map:
+                asset = inner.get(Asset, asset_map[target_host])
 
             plugin_names = current_job.plugins or ["generic"]
             for plugin_name in plugin_names:
@@ -148,6 +161,22 @@ def run_scan_job(
                         observation_payload.setdefault("metrics", {})[
                             "attempts"
                         ] = attempts + 1
+
+                        if asset:
+                            observation_payload["asset_id"] = asset.id
+                            updated = False
+                            protocols = list(asset.protocols or [])
+                            if spec.protocol not in protocols:
+                                protocols.append(spec.protocol)
+                                asset.protocols = protocols
+                                updated = True
+                            if not asset.device_type and spec.device_types:
+                                asset.device_type = spec.device_types[0]
+                                updated = True
+                            if updated:
+                                asset.updated_at = datetime.utcnow()
+                                inner.add(asset)
+
                         observation = Observation(**observation_payload)
                         inner.add(observation)
                         inner.commit()
