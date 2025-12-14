@@ -13,10 +13,12 @@ from __future__ import annotations
 import socket
 from dataclasses import dataclass
 from datetime import datetime
+from hashlib import sha256
+from pathlib import Path
 from typing import Dict, Tuple
 
 from app.core.config import get_settings
-from app.services.plugins import PluginSpec, simulate_plugin_collection
+from app.services.plugins import PluginSpec, _write_evidence_bytes, simulate_plugin_collection
 
 
 class CollectorDependencyError(RuntimeError):
@@ -232,6 +234,78 @@ def _collect_opcua(spec: PluginSpec, target: str, parameters: Dict) -> Collector
     )
 
 
+def _collect_iec104(spec: PluginSpec, target: str, parameters: Dict) -> CollectorResult:
+    """Perform a conservative IEC 60870-5-104 handshake and test frame.
+
+    The interaction is limited to StartDT and TestFR U-frames, which do not
+    carry control commands or writes. Raw APDU traffic is captured as evidence
+    for auditing and later analysis.
+    """
+
+    host, port = _parse_target(target, spec.default_port)
+    timeouts = parameters.get("timeouts", {})
+    timeout = timeouts.get("connect_s", get_settings().default_connect_timeout)
+    start_frame = bytes([0x68, 0x04, 0x07, 0x00, 0x00, 0x00])
+    test_frame = bytes([0x68, 0x04, 0x43, 0x00, 0x00, 0x00])
+    frames = []
+
+    started = datetime.utcnow()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout)
+        sock.connect((host, port))
+
+        def send_and_record(payload: bytes) -> bytes:
+            sock.sendall(payload)
+            frames.append({"direction": "out", "hex": payload.hex()})
+            try:
+                data = sock.recv(1024)
+            except socket.timeout:
+                data = b""
+            if data:
+                frames.append({"direction": "in", "hex": data.hex()})
+            return data
+
+        start_resp = send_and_record(start_frame)
+        test_resp = send_and_record(test_frame)
+
+    latency_ms = (datetime.utcnow() - started).total_seconds() * 1000
+    parsed = _base_payload(spec, target, parameters)
+    parsed.update(
+        {
+            "apdu_count": len(frames),
+            "link_status": "ok" if start_resp or test_resp else "no_response",
+            "startdt": {"sent": start_frame.hex(), "response_hex": start_resp.hex()},
+            "testfr": {"sent": test_frame.hex(), "response_hex": test_resp.hex()},
+        }
+    )
+
+    evidence_bytes = "\n".join([f"{f['direction']}:{f['hex']}" for f in frames]).encode()
+    evidence_hash = "sha256:" + sha256(evidence_bytes).hexdigest()
+    evidence_root = Path(get_settings().evidence_dir)
+    evidence_root.mkdir(parents=True, exist_ok=True)
+    storage_path = _write_evidence_bytes(evidence_bytes, spec, target, evidence_root)
+
+    return CollectorResult(
+        observation={
+            "asset_id": None,
+            "protocol": spec.protocol,
+            "timestamp": datetime.utcnow(),
+            "parsed_data": parsed,
+            "metrics": {
+                "status": "ok",
+                "latency_ms": latency_ms,
+                "default_port": port,
+            },
+            "raw_refs": [str(storage_path)],
+        },
+        evidence={
+            "hash": evidence_hash,
+            "storage_path": str(storage_path),
+            "context": {"plugin": spec.name, "protocol": spec.protocol, "frames": len(frames)},
+        },
+    )
+
+
 def _collect_socket_probe(spec: PluginSpec, target: str, parameters: Dict) -> CollectorResult:
     host, port = _parse_target(target, spec.default_port)
     latency_ms = _safe_socket_probe(host, port, parameters.get("timeouts", {}).get("connect_s", 3.0))
@@ -255,7 +329,7 @@ COLLECTOR_MAP = {
     "snmp": _collect_snmp,
     "ssh": _collect_ssh,
     "opcua": _collect_opcua,
-    "iec104": _collect_socket_probe,  # lightweight link bring-up probe
+    "iec104": _collect_iec104,
     "s7comm": _collect_socket_probe,
     "cip": _collect_socket_probe,
     "generic": _collect_socket_probe,

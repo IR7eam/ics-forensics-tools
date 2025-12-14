@@ -64,6 +64,7 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Plugin registry API + UI surfacing**: `/api/plugins` lists per-protocol allowed/dangerous operations, device types, and descriptions so the frontend can highlight read-only defaults and red-flag opt-in steps in the Settings page.
 - **Baseline UX and attack-stage awareness**: Settings now offers baseline train/evaluate controls, and the dashboard visualizes attack-stage coverage using `/analysis/attack-stages` so analysts can track drift and stage trends.
 - **Rule-pack management**: Analysts can upload/list/toggle rule packs via `/api/rules` with audit coverage and test them in the Settings UI to validate detection logic.
+- **IEC104 handshake evidence**: The real collector now issues only StartDT/TestFR frames, records APDUs as raw evidence with SHA-256 hashes, and remains read-only by default.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.

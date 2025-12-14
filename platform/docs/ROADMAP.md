@@ -46,7 +46,8 @@ requirements and highlights what is already implemented versus what remains.
 - **Collector toggle + fallback**: Runtime switch (`ICS_USE_SIMULATED_PLUGINS`)
   to attempt real read-only collectors (Modbus/SNMP/SSH/OPC UA) when optional
   dependencies are installed, with automatic audited fallback to simulation on
-  missing deps or connection failures.
+  missing deps or connection failures. IEC104 now performs a conservative
+  StartDT/TestFR handshake and persists captured APDUs as evidence.
 
 ## Gaps toward the full requirements
 - **Real protocol collectors**: Implement deeper parsing and coverage for
