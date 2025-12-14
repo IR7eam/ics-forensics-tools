@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -17,7 +18,7 @@ class AuditLogCreate(AuditLogBase):
 
 class AuditLogRead(AuditLogBase):
     id: int
-    timestamp: Optional[str] = None
+    timestamp: Optional[datetime] = None
 
     class Config:
         orm_mode = True

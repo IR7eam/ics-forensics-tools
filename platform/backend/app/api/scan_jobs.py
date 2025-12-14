@@ -3,31 +3,39 @@ from typing import List
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlmodel import Session, select
 
-from app.core.security import get_current_user
+from app.core.security import Role, require_role
 from app.db.session import get_session
 from app.models.core import ScanJob
 from app.schemas.scan_jobs import ScanJobCreate, ScanJobRead, ScanJobUpdate
+from app.services.audit import record_audit
 from app.services.scanner import run_scan_job
 
 router = APIRouter(prefix="/scan-jobs", tags=["scan-jobs"])
 
 
 @router.get("/", response_model=List[ScanJobRead])
-def list_jobs(session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+def list_jobs(session: Session = Depends(get_session), current_user=Depends(require_role(Role.viewer))):
     return session.exec(select(ScanJob)).all()
 
 
 @router.post("/", response_model=ScanJobRead)
-def create_job(job: ScanJobCreate, session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+def create_job(job: ScanJobCreate, session: Session = Depends(get_session), current_user=Depends(require_role(Role.analyst))):
     db_job = ScanJob.from_orm(job)
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    record_audit(
+        session,
+        actor=current_user.username,
+        action="scan_job_create",
+        resource=str(db_job.id),
+        detail={"plugins": db_job.plugins, "targets": db_job.target_range},
+    )
     return db_job
 
 
 @router.get("/{job_id}", response_model=ScanJobRead)
-def get_job(job_id: int, session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+def get_job(job_id: int, session: Session = Depends(get_session), current_user=Depends(require_role(Role.viewer))):
     job = session.get(ScanJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="ScanJob not found")
@@ -35,7 +43,7 @@ def get_job(job_id: int, session: Session = Depends(get_session), current_user=D
 
 
 @router.put("/{job_id}", response_model=ScanJobRead)
-def update_job(job_id: int, job: ScanJobUpdate, session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+def update_job(job_id: int, job: ScanJobUpdate, session: Session = Depends(get_session), current_user=Depends(require_role(Role.analyst))):
     db_job = session.get(ScanJob, job_id)
     if not db_job:
         raise HTTPException(status_code=404, detail="ScanJob not found")
@@ -44,6 +52,13 @@ def update_job(job_id: int, job: ScanJobUpdate, session: Session = Depends(get_s
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    record_audit(
+        session,
+        actor=current_user.username,
+        action="scan_job_update",
+        resource=str(db_job.id),
+        detail=job.dict(exclude_unset=True),
+    )
     return db_job
 
 
@@ -52,7 +67,7 @@ def trigger_job(
     job_id: int,
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role(Role.analyst)),
 ):
     db_job = session.get(ScanJob, job_id)
     if not db_job:
@@ -63,4 +78,11 @@ def trigger_job(
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    record_audit(
+        session,
+        actor=actor,
+        action="scan_job_queue",
+        resource=str(job_id),
+        detail={"plugins": db_job.plugins, "targets": db_job.target_range},
+    )
     return db_job

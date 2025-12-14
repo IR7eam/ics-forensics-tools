@@ -11,7 +11,8 @@ from typing import Callable, Iterable, Optional
 from sqlmodel import Session
 
 from app.db.session import engine
-from app.models.core import AuditLog, Observation, RawEvidence, ScanJob
+from app.models.core import Observation, RawEvidence, ScanJob
+from app.services.audit import record_audit
 from app.services.plugins import (
     PLUGIN_REGISTRY,
     simulate_plugin_collection,
@@ -21,18 +22,6 @@ from app.services.plugins import (
 
 def _default_session_factory():
     return Session(engine)
-
-
-def record_audit(
-    session: Session, actor: str, action: str, resource: str, detail: Optional[dict] = None, status: str = "success"
-) -> AuditLog:
-    entry = AuditLog(actor=actor, action=action, resource=resource, status=status, detail=detail or {})
-    session.add(entry)
-    session.commit()
-    session.refresh(entry)
-    return entry
-
-
 def run_scan_job(
     job_id: int,
     actor: str,

@@ -29,6 +29,9 @@ requirements and highlights what is already implemented versus what remains.
   about protocol/read-only posture.
 - **Safety defaults**: All simulated plugins are read-only, with explicit notes
   around opt-in operations (e.g., IEC104 total call, SSH command whitelist).
+- **RBAC and audit expansion**: API routes now enforce viewer/analyst/admin
+  roles with demo credentials and create audit entries for CRUD, analysis, and
+  scan operations.
 - **Progress tracking**: This roadmap documents gaps vs. the full requirement set
   and proposes the next milestone targets below.
 
@@ -38,8 +41,8 @@ requirements and highlights what is already implemented versus what remains.
   concurrency, and rate limits enforced in network calls.
 - **Device coverage & fingerprinting**: Per-device-type enrichment (vendor,
   model, firmware) from protocol responses and mapping into assets/observations.
-- **RBAC and audit depth**: Enforce roles (admin/analyst/viewer) and attach
-  per-request audit entries across APIs, not just scanner actions.
+- **RBAC and audit depth**: Harden role checks (custom user store, configurable
+  roles) and broaden per-request audit metadata/filters.
 - **Background orchestration**: Replace the inline scan loop with a worker/queue
   (e.g., Celery/RQ) and cancellation controls for long-running jobs.
 - **Baseline learning**: Persist baseline training runs per asset/protocol and

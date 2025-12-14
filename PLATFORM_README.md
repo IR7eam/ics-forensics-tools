@@ -6,9 +6,9 @@ See `platform/docs/ROADMAP.md` for a detailed gap analysis and next-milestone ch
 
 ## Current scope (Milestone 1)
 - Adds a FastAPI-based backend skeleton under `platform/backend` with SQLModel data models for the platform-wide normalized entities (Asset, ScanJob, Observation, RawEvidence, SecurityEvent, EvidenceLink, Report, BaselineProfile).
-- Provides JWT-backed authentication helper and simple token issuance endpoint (username/password placeholder) to enable role-aware APIs later.
+- Provides JWT-backed authentication with demo roles (viewer/analyst/admin) so APIs enforce least-privilege access.
 - Exposes CRUD APIs for Assets, Scan Jobs, Observations, Evidence, Baselines, Security Events, and Evidence Links to unblock front-end wiring and initial data ingestion.
-- Adds an audit log surface (`/api/audit`) and a background scan trigger (`POST /api/scan-jobs/{id}/run`) that simulates read-only collections while recording per-target audit entries.
+- Adds an audit log surface (`/api/audit`) and a background scan trigger (`POST /api/scan-jobs/{id}/run`) that simulates read-only collections while recording per-target audit entries. CRUD, report generation, and analysis calls are also audited.
 - Adds analysis helpers: rule evaluation (YAML-driven) and anomaly detection (z-score + Isolation Forest) via `/api/analysis` endpoints.
 - Introduces report generation (HTML/PDF/DOCX) via `/api/reports/generate`, storing paths in the `Report` table for download/preview.
 - Includes a `Makefile` to start the backend (`make backend`), initialize the database (`make init-db`), or run backend unit tests (`make test-backend`).
@@ -29,10 +29,12 @@ npm run dev -- --host
 The API will listen on `http://0.0.0.0:8000` with OpenAPI docs at `/docs`.
 The UI will be available at `http://127.0.0.1:5173` (configurable via Vite).
 
-## Authentication (developer-friendly placeholder)
-- Obtain a bearer token by calling `POST /api/auth/token` with any `username`/`password` via OAuth2 form fields. The backend returns a JWT signed with `ICS_JWT_SECRET` (defaults to `change-me`).
-- Use the returned `access_token` as `Authorization: Bearer <token>` to access protected endpoints.
-- Roles are stored in the token payload and default to `admin` for now; future milestones will enforce RBAC and audit logging.
+## Authentication (developer-friendly RBAC)
+- Obtain a bearer token by calling `POST /api/auth/token` with OAuth2 form fields. Default demo accounts:
+  - `admin` / `admin` (role: admin)
+  - `analyst` / `analyst` (role: analyst)
+  - `viewer` / `viewer` (role: viewer)
+- Use the returned `access_token` as `Authorization: Bearer <token>` to access protected endpoints. The backend enforces roles: viewers can read, analysts can create/update jobs/assets/baselines/events, and admins can review audit logs and delete assets.
 
 ## Data model overview
 The SQLModel tables mirror the normalized evidence schema:

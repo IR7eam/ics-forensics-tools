@@ -44,6 +44,8 @@ cd platform/frontend
 npm install
 npm run dev -- --host  # serves http://localhost:5173
 ```
+
+Authentication for the platform uses demo accounts: `admin/admin`, `analyst/analyst`, and `viewer/viewer`. Use the returned token from `POST /api/auth/token` as `Authorization: Bearer <token>` when calling the APIs.
 ## Usage
 
 ### General application arguments:

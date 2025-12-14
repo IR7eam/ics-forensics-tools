@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 12
     report_dir: str = "./reports"
+    demo_users: List[str] = [
+        "admin:admin:admin",
+        "analyst:analyst:analyst",
+        "viewer:viewer:viewer",
+    ]
 
     class Config:
         env_prefix = "ICS_"
