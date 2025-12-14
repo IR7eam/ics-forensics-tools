@@ -62,6 +62,7 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Roadmap tracking**: Documented current coverage, gaps, and upcoming milestones in `platform/docs/ROADMAP.md` to clarify what remains for full delivery.
 - **Safety enforcement**: Scan jobs now enforce operation allowlists and require explicit opt-in for side-effecting protocol actions, recording denied attempts in the audit log.
 - **Plugin registry API + UI surfacing**: `/api/plugins` lists per-protocol allowed/dangerous operations, device types, and descriptions so the frontend can highlight read-only defaults and red-flag opt-in steps in the Settings page.
+- **Baseline UX and attack-stage awareness**: Settings now offers baseline train/evaluate controls, and the dashboard visualizes attack-stage coverage using `/analysis/attack-stages` so analysts can track drift and stage trends.
 
 ## Next milestones (suggested breakdown)
 1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Timeline, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Timeline, Typography, Tag, List } from 'antd';
 import { apiClient } from '../api/client';
 
 interface Asset {
@@ -17,9 +17,15 @@ interface SecurityEvent {
   description?: string;
 }
 
+interface StageSummaryEntry {
+  count: number;
+  max_risk: number;
+}
+
 export function DashboardPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [stageSummary, setStageSummary] = useState<Record<string, StageSummaryEntry>>({});
 
   useEffect(() => {
     apiClient.get<Asset[]>('/assets').then((res) => setAssets(res.data)).catch(() => setAssets([]));
@@ -27,6 +33,10 @@ export function DashboardPage() {
       .get<SecurityEvent[]>('/events')
       .then((res) => setEvents(res.data.slice(0, 5)))
       .catch(() => setEvents([]));
+    apiClient
+      .get<Record<string, StageSummaryEntry>>('/analysis/attack-stages')
+      .then((res) => setStageSummary(res.data))
+      .catch(() => setStageSummary({}));
   }, []);
 
   return (
@@ -41,6 +51,29 @@ export function DashboardPage() {
         <Col span={6}>
           <Card>
             <Statistic title="Recent Events" value={events.length} />
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="Attack Stage Coverage">
+            <List
+              dataSource={Object.entries(stageSummary)}
+              locale={{ emptyText: 'No events scored yet' }}
+              renderItem={([stage, entry]) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={stage}
+                    description={
+                      <div>
+                        <Tag color={entry.max_risk >= 0.7 ? 'red' : entry.max_risk >= 0.4 ? 'orange' : 'blue'}>
+                          Max risk {entry.max_risk.toFixed(2)}
+                        </Tag>
+                        <Tag>{entry.count} events</Tag>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
           </Card>
         </Col>
       </Row>
