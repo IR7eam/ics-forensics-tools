@@ -97,6 +97,12 @@ Each milestone will preserve the safety constraints (read-only defaults, explici
 - **Evidence delivery & UI hooks**: expose report download endpoints, attach evidence-link traversal helpers, and start the frontend scaffold (React + AntD) with pages for dashboard, assets, scan jobs, events, and report preview.
 - **Frontend skeleton (delivered in this step)**: a Vite + React + Ant Design single-page app with navigation, JWT login helper, and pages for dashboard, assets, scan jobs, events, evidence chains, reports, and settings.
 
+## Developer commands
+- `make test` – run backend unit tests
+- `make lint` – run formatting checks
+- `make demo` – start backend + frontend via Compose (first build takes longer)
+- `make seed-assets` – import sample assets CSV into the running backend for faster UI testing
+
 ## Testing
 ```bash
 cd platform
@@ -106,4 +112,4 @@ pip install -r backend/requirements.txt
 make test-backend
 ```
 
-Sample job payloads for manual testing live in `platform/docs/sample_targets.yaml`; each entry corresponds to `name`, `target_range`, and `plugins` fields you can paste into the Scan Jobs form. All presets stick to read-only operations.
+Sample job payloads for manual testing live in `platform/docs/sample_targets.yaml`; each entry corresponds to `name`, `target_range`, and `plugins` fields you can paste into the Scan Jobs form. All presets stick to read-only operations. Use `platform/docs/sample_assets.csv` with the `/api/assets/import` endpoint to pre-seed asset rows for the UI.

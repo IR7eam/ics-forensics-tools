@@ -1,0 +1,4 @@
+ip,hostname,device_type,vendor,model,protocols,tags
+192.168.10.10,plc-line1,plc,Siemens,S7-300,modbus/tcp;s7comm,critical;line1
+192.168.10.20,rtu-substation,rtu,ABB,RTU560,iec104;opcua,substation
+192.168.10.30,edge-gw,gateway,Cisco,IR1101,snmp;opcua,edge

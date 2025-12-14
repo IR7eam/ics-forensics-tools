@@ -1,6 +1,8 @@
+import csv
+import io
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlmodel import Session, select
 
 from app.core.security import Role, require_role
@@ -31,6 +33,88 @@ def create_asset(asset: AssetCreate, session: Session = Depends(get_session), cu
         detail={"ip": db_asset.ip, "hostname": db_asset.hostname},
     )
     return db_asset
+
+
+@router.post("/import", response_model=List[AssetRead])
+def import_assets(
+    *, file: UploadFile, session: Session = Depends(get_session), current_user=Depends(require_role(Role.analyst))
+):
+    """Bulk-import assets from a CSV file (ip is required)."""
+
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV uploads are supported")
+
+    content = file.file.read().decode("utf-8")
+    reader = csv.DictReader(io.StringIO(content))
+    created: List[Asset] = []
+    for row in reader:
+        if not row.get("ip"):
+            continue
+        asset = Asset(
+            ip=row.get("ip", "").strip(),
+            hostname=row.get("hostname") or None,
+            device_type=row.get("device_type") or None,
+            vendor=row.get("vendor") or None,
+            model=row.get("model") or None,
+            serial=row.get("serial") or None,
+            firmware=row.get("firmware") or None,
+            protocols=[p for p in (row.get("protocols") or "").split(";") if p],
+            tags=[t for t in (row.get("tags") or "").split(";") if t],
+        )
+        session.add(asset)
+        created.append(asset)
+
+    session.commit()
+    for asset in created:
+        session.refresh(asset)
+    record_audit(session, actor=current_user.username, action="asset_import", resource="bulk", detail={"count": len(created)})
+    return created
+
+
+@router.get("/export")
+def export_assets(*, session: Session = Depends(get_session), current_user=Depends(require_role(Role.viewer))):
+    """Export all assets as CSV for offline editing or reuse."""
+
+    output = io.StringIO()
+    fieldnames = [
+        "id",
+        "ip",
+        "hostname",
+        "device_type",
+        "vendor",
+        "model",
+        "serial",
+        "firmware",
+        "protocols",
+        "tags",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for asset in session.exec(select(Asset)):
+        writer.writerow(
+            {
+                "id": asset.id,
+                "ip": asset.ip,
+                "hostname": asset.hostname or "",
+                "device_type": asset.device_type or "",
+                "vendor": asset.vendor or "",
+                "model": asset.model or "",
+                "serial": asset.serial or "",
+                "firmware": asset.firmware or "",
+                "protocols": ";".join(asset.protocols or []),
+                "tags": ";".join(asset.tags or []),
+            }
+        )
+
+    csv_text = output.getvalue()
+    record_audit(
+        session,
+        actor=current_user.username,
+        action="asset_export",
+        resource="bulk",
+        detail={"count": len(csv_text.splitlines()) - 1},
+    )
+    return csv_text
 
 
 @router.get("/{asset_id}", response_model=AssetRead)
