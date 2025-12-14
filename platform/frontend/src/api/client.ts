@@ -42,3 +42,15 @@ export async function fetchAuditLogs(filters: {
     timestamp: string;
   }>;
 }
+
+export async function fetchRoadmap() {
+  const response = await apiClient.get('/roadmap');
+  return response.data as {
+    iterations_remaining: number;
+    focus_areas: string[];
+    delivered: Array<{ title: string; detail: string; status: string; category: string }>;
+    in_progress: Array<{ title: string; detail: string; status: string; category: string }>;
+    remaining: Array<{ title: string; detail: string; status: string; category: string }>;
+    blockers: string[];
+  };
+}

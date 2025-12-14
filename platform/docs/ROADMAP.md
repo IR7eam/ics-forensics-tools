@@ -52,43 +52,37 @@ requirements and highlights what is already implemented versus what remains.
   observations, events, raw evidence, and links into a time-ordered set with
   attack-stage counts and max risk summaries, and the UI renders a filterable
   timeline plus evidence downloads.
+- **Roadmap API**: `/api/roadmap` exposes delivered, in-progress, and remaining
+  items with iteration estimates so operators can track what is left.
 
 ## Gaps toward the full requirements
-- **Real protocol collectors**: Implement deeper parsing and coverage for
-  Modbus/TCP, OPC UA, IEC104, SNMP, SSH (plus S7/CIP wiring) beyond the current
-  socket-probe and optional client integrations, with structured raw captures
-  and adaptive limits.
-- **Device coverage & fingerprinting**: Per-device-type enrichment (vendor,
-  model, firmware) from protocol responses and mapping into assets/observations.
-- **RBAC and audit depth**: Harden role checks (custom user store, configurable
-  roles) and broaden per-request audit metadata/filters.
-- **Background orchestration**: Replace the inline scan loop with a worker/queue
-  (e.g., Celery/RQ) and cancellation controls for long-running jobs.
-- **Baseline learning**: Persist baseline training runs per asset/protocol and
-  surface deviations automatically into SecurityEvents.
-- **Evidence chain visualization**: UI rendering for evidence timelines/graphs
-  and attack-stage tagging across observations and events.
-- **Integration tests**: docker-compose fixtures for protocol simulators
-  (Modbus, OPC UA, SNMP, SSH, IEC104) plus end-to-end API/UI smoke tests.
-- **Documentation**: Expanded operator guide (safety defaults, opt-in actions,
-  report templates), and sample scan configs (targets.yaml/ips.csv).
+- **Real protocol collectors** (in progress): Implement deeper parsing and
+  coverage for Modbus/TCP, OPC UA, IEC104, SNMP, SSH (plus S7/CIP wiring)
+  beyond the current socket probes and optional client integrations, with
+  structured raw captures and adaptive limits.
+- **Integration harness** (in progress): docker-compose fixtures for protocol
+  simulators (Modbus, OPC UA, SNMP, SSH, IEC104) plus end-to-end API/UI smoke
+  tests.
+- **Queue/worker hardening** (planned): Swap the inline worker for Celery/RQ or
+  pluggable queues so retries/cancellation persist across processes.
+- **Device fingerprint depth** (planned): Protocol-specific parsing to populate
+  vendor/model/firmware per device_type without overwriting curated data.
+- **Operator docs and presets** (planned): Expanded safety guidance, opt-in
+  operation flags, and richer sample targets for field validation.
 
-**Remaining workload estimate**: ~3–4 development iterations are expected to
-deliver fuller live-collector parsing/fingerprints, a production-grade worker
-layer, simulator-backed integration tests, and final operator-facing docs and
-report templates.
+**Remaining workload estimate**: ~2 development iterations to deepen live
+collectors, deliver simulator-backed integration tests, and finalize worker
+hardening plus operator docs.
 
 ## Next milestone (proposed)
-- Implement a plugin runner abstraction that can call real collectors (keeping
-  read-only operations as defaults) with rate-limit + timeout controls.
-- Introduce RBAC enforcement (admin/analyst/viewer) on sensitive endpoints and
-  broaden audit logging to cover CRUD and analysis actions.
-- Add queue-backed job execution (background worker or Celery-ready hooks) with
-  status polling and cancellation.
-- Wire frontend pages to live API data for assets, jobs, events, and reports,
-  including evidence download links and progress indicators.
-- Provide docker-compose integration fixtures for at least Modbus, OPC UA, SNMP,
-  and SSH simulators to validate collectors and reporting flows.
+- Finish live collectors for Modbus/OPCUA/SNMP/SSH/IEC104 with structured
+  observations and conservative opt-in gates.
+- Ship simulator-backed integration tests and wire them into `make test-int`
+  (optionally gated for CI runtime).
+- Add Celery/RQ-ready hooks so scan execution can move to an external worker
+  while keeping the in-process queue for lightweight demos.
+- Expand operator docs with opt-in action guidance, sample targets, and
+  checklist for air-gapped deployments.
 
 ## Acceptance checkpoints
 - **Safety**: All collectors remain read-only by default; any opt-in action must

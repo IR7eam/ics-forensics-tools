@@ -68,16 +68,15 @@ The SQLModel tables mirror the normalized evidence schema:
 - **Evidence-chain timelines**: `/api/analysis/evidence-chain` assembles observations, security events, raw evidence, and links into a time-ordered view with stage/risk summaries, and the UI visualizes the chain with filters plus evidence downloads.
 - **Asset enrichment from scans**: When scan targets match known asset IPs, observations are automatically linked and the asset's device_type/protocol list are updated using plugin metadata to keep inventories fresh without manual edits.
 - **Passive fingerprinting**: Scan observations now feed simple vendor/model/firmware heuristics (e.g., SNMP sysDescr, OPC UA BuildInfo) to enrich assets safely without overwriting curated records, and previously unknown targets are auto-added to the inventory.
+- **Roadmap transparency**: `/api/roadmap` returns delivered/in-progress/planned items with iteration estimates, and the UI page highlights remaining gaps so operators know how many milestones are left.
 
 ## Next milestones (suggested breakdown)
-1. **Protocol plugins + collectors**: integrate Modbus/S7/CIP/OPC UA/IEC104/SNMP/SSH collectors with timeouts, concurrency, and rate limits; map outputs into `Observation` and `RawEvidence`.
-2. **Task orchestration & audit**: background workers, per-request audit logs, role-based permissions, and job state machine.
-3. **Analysis layer**: rule engine, baseline modeling, anomaly detection utilities producing `SecurityEvent` rows.
-4. **Evidence graph & reporting**: evidence linkage APIs, attack-stage mapping, and multi-format report generation.
-5. **Frontend**: React-based dashboard consuming the APIs (assets, jobs, events, evidence chains, reports, settings).
-6. **Packaging & tests**: docker-compose, integration fixtures (simulated protocol servers), unit tests for rule engine/anomaly detection, and documentation updates.
+1. **Live collectors**: deepen Modbus/OPCUA/SNMP/SSH/IEC104 parsing (opt-in for any side-effect operations) with structured observations and adaptive limits.
+2. **Integration harness**: docker-compose protocol simulators plus API/UI smoke tests (gated via `make test-int`).
+3. **Worker hardening**: external queue option (Celery/RQ) with persistence-friendly retries/cancellation while keeping the in-process queue for demos.
+4. **Operator polish**: more presets/targets, safety guidance, and report templates that surface evidence timelines and risk.
 
-**Remaining workload estimate**: ~3–4 additional development iterations should cover richer live collectors (with parsing and fingerprint enrichment), a sturdier worker/queue layer, integration test harnesses against protocol simulators, and final operator documentation/report templates.
+**Remaining workload estimate**: ~2 additional development iterations should cover deeper live collectors, a sturdier worker/queue layer, simulator-backed integration tests, and final operator documentation/report templates.
 
 Each milestone will preserve the safety constraints (read-only defaults, explicit opt-in for side-effecting operations) and extend the schema where necessary to capture audit details.
 

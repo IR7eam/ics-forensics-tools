@@ -12,6 +12,7 @@ from app.api import (
     audit,
     plugins,
     rules,
+    roadmap,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "audit",
     "plugins",
     "rules",
+    "roadmap",
 ]

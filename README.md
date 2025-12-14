@@ -54,6 +54,7 @@ docker compose up --build
 ```
 Backend will listen on `http://localhost:8000`, frontend on `http://localhost:4173`.
 Use the new `/api/plugins` endpoint (also visible in the frontend Settings page) to review allowed vs. dangerous protocol operations for Modbus/OPC UA/IEC104/SNMP/SSH before queueing scan jobs.
+Use `/api/roadmap` (exposed on the UI Roadmap tab) to see delivered, in-progress, and planned items plus how many iterations remain.
 
 To attempt **live read-only collectors** instead of the default simulator, set `ICS_USE_SIMULATED_PLUGINS=false` and install optional dependencies (`pymodbus`, `pysnmp`, `paramiko`, `opcua`). Missing deps or connection failures fall back to simulation with an audit log entry to preserve safety.
 ## Usage

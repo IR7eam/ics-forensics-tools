@@ -10,6 +10,7 @@ import { ReportsPage } from './pages/Reports';
 import { SettingsPage } from './pages/Settings';
 import { AuditPage } from './pages/Audit';
 import { LoginPage } from './pages/Login';
+import { RoadmapPage } from './pages/Roadmap';
 import { setAuthToken } from './api/client';
 
 export function App() {
@@ -45,6 +46,7 @@ export function App() {
           <Route path="/audit" element={<AuditPage />} />
           <Route path="/evidence" element={<EvidenceChainPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </AppLayout>
