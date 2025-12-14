@@ -24,6 +24,7 @@ from app.services.collectors import (
     CollectorExecutionError,
     collect_with_plugin,
 )
+from app.services.enrichment import enrich_asset_from_observation
 from app.services.plugins import PLUGIN_REGISTRY, simulate_plugin_collection, validate_operations
 
 
@@ -109,6 +110,23 @@ def run_scan_job(
             plugin_names = current_job.plugins or ["generic"]
             for plugin_name in plugin_names:
                 spec = PLUGIN_REGISTRY.get(plugin_name, PLUGIN_REGISTRY["generic"])
+                if asset is None:
+                    asset = Asset(
+                        ip=target_host,
+                        device_type=spec.device_types[0] if spec.device_types else None,
+                        protocols=[spec.protocol],
+                    )
+                    inner.add(asset)
+                    inner.commit()
+                    inner.refresh(asset)
+                    asset_map[target_host] = asset.id
+                    record_audit(
+                        inner,
+                        actor=actor,
+                        action="asset_discovered",
+                        resource=target_host,
+                        detail={"job_id": job_id, "plugin": plugin_name},
+                    )
                 attempts = 0
                 while attempts <= current_job.max_retries:
                     try:
@@ -164,15 +182,11 @@ def run_scan_job(
 
                         if asset:
                             observation_payload["asset_id"] = asset.id
-                            updated = False
-                            protocols = list(asset.protocols or [])
-                            if spec.protocol not in protocols:
-                                protocols.append(spec.protocol)
-                                asset.protocols = protocols
-                                updated = True
-                            if not asset.device_type and spec.device_types:
-                                asset.device_type = spec.device_types[0]
-                                updated = True
+                            updated = enrich_asset_from_observation(
+                                asset,
+                                observation_payload.get("parsed_data", {}),
+                                spec.protocol,
+                            )
                             if updated:
                                 asset.updated_at = datetime.utcnow()
                                 inner.add(asset)
